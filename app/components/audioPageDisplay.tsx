@@ -1,7 +1,6 @@
 import { Grid } from "@mui/material";
 import { useRef } from "react";
 import { AudioPageProps, AudioElementProps } from "../audio/audioManagement";
-import YouTube from 'react-youtube';
 
 interface AudioPageDisplayProps {
     readonly page: AudioPageProps;
