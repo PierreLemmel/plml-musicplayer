@@ -5,6 +5,8 @@ export interface AudioPageProps {
 export interface AudioElementProps {
     readonly index: number;
     readonly isOn: boolean;
+
+    readonly audioClip?: AudioClip;
 }
 
 export const getDefaultAudioPage = (page: number): AudioPageProps => {
@@ -18,7 +20,27 @@ export const getDefaultAudioPage = (page: number): AudioPageProps => {
             };
         })
 
+    values[12] = {
+        ...values[12],
+        audioClip: {
+            type: "YoutubeMusic",
+            key: "9apSSkjgUOI",
+            title: "La responsabilité des rêves"
+        }
+    }
+
     return {
         values: values
     }
 }
+
+interface AudioClipBase {
+    readonly key: string;
+    readonly title: string;
+}
+
+interface YoutubeMusicAudio extends AudioClipBase {
+    readonly type: "YoutubeMusic";
+}
+
+type AudioClip = YoutubeMusicAudio;

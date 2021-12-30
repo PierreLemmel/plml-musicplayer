@@ -1,9 +1,11 @@
 {
-    "scripts": {
-      "dev": "cd app && npm install && next",
-      "build": "cd app && next build",
-      "start": "cd app && next start",
-      "type-check": "tsc"
-    }
+  "scripts": {
+    "dev": "cd app && npm install && next",
+    "build": "cd app && next build",
+    "start": "cd app && next start",
+    "type-check": "tsc"
+  },
+  "dependencies": {
+    "react-youtube": "^7.13.1"
   }
-  
+}

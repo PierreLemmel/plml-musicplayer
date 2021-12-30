@@ -5,6 +5,10 @@ import '../styles/index.css'
 import { AppContext, AppContextProps } from '../contexts/appContext'
 import { getMidiMessage, MidiMessage, MidiProps } from '../audio/midi'
 import { AudioPageProps, getDefaultAudioPage } from '../audio/audioManagement'
+import Head from 'next/head'
+import { createTheme } from '@mui/material'
+import { ThemeProvider } from '@mui/system'
+import { HotKeyContext, HotkeysContextProps } from '../contexts/hotkeysContext'
 
 const App = ({ Component, pageProps }: AppProps) => {
 
@@ -60,15 +64,19 @@ const App = ({ Component, pageProps }: AppProps) => {
         }
 
         const [page, pageSetter] = getPageAndSetter(Math.floor(key / 16) + 1);
-        page.values.splice(key % 16, 1, {
-            index: key + 1,
+
+        const idx = key % 16;
+
+        const newValue = {
+            ...page.values[idx],
             isOn
-        })
+        };
+        page.values.splice(idx, 1, newValue);
 
         pageSetter({...page});
     }
 
-    const context: AppContextProps = {
+    const appContext: AppContextProps = {
         midi,
         pages: {
             page1: page1,
@@ -86,10 +94,47 @@ const App = ({ Component, pageProps }: AppProps) => {
             case 4: return [page4Ref.current, setPage4];
         }
     };
+    const muiTheme = createTheme({
+        palette: {
+            mode: 'dark',
+        },
+    });
 
-    return <AppContext.Provider value={context}>
-        <Component {...pageProps} />
-    </AppContext.Provider>
+    const hkMapRef = useRef<Map<string, () => void>>(new Map());
+
+    const hkContext: HotkeysContextProps = {
+        setHotkey: (key, handler) => hkMapRef.current.set(key, handler)
+    }
+
+    useEffect(() => {
+
+        const globalKeyDownHandler = e => {
+            const key: string = e.key;
+
+            if (hkMapRef.current.has(key)) {
+                const handler = hkMapRef.current.get(key);
+                handler();
+            }
+        };
+
+        document.addEventListener("keydown", globalKeyDownHandler);
+        return () => document.removeEventListener("keydown", globalKeyDownHandler);
+    }, [])
+
+    return <ThemeProvider theme={muiTheme}>
+        <AppContext.Provider value={appContext}>
+        <HotKeyContext.Provider value={hkContext}>
+            <Head>
+                <title>Plml MusicPlayer</title>
+                <meta name="viewport" content="initial-scale=1.0, width=device-width" />
+                <link rel="shortcut icon" href="favicon.ico" />
+            </Head>
+            <div className="m-0 w-screen h-screen overflow-hidden bg-slate-900 text-gray-300">
+                <Component {...pageProps} />
+            </div>
+        </HotKeyContext.Provider>
+        </AppContext.Provider>
+    </ThemeProvider>;
 }
 
 export default App
