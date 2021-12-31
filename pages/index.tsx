@@ -1,7 +1,6 @@
 import { Pagination } from '@mui/material';
-import { useEffect, useState } from 'react';
-import { AudioPageProps } from '../audio/audioManagement';
-import { MidiProps } from '../audio/midi';
+import { useState } from 'react';
+import { AudioPageProps } from '../services/audio/audio';
 import AudioPageDisplay from '../components/audioPageDisplay';
 import { useAppContext } from '../contexts/appContext'
 import { useHotKeyContext } from '../contexts/hotkeysContext';
@@ -40,12 +39,11 @@ const pagesColor: AudioPageColorInfo[] = [
     },
 ]
 
-const IndexPage = () => {
+const ShowPage = () => {
 
     const [pageIndex, setPageIndex] = useState<number>(1);
 
     const {
-        midi,
         pages: { page1, page2, page3, page4 }
     } = useAppContext();
 
@@ -79,29 +77,12 @@ const IndexPage = () => {
     hkContext.setHotkey("'", () => setPageIndex(4));
     
 
-    return <div className="p-3" >
+    return <div className="px-3" >
         <div className="w-full xl:w-2/3 2xl:w-1/2 flex flex-col justify-center items-center">
-            <Pagination count={4} page={pageIndex} onChange={(e, val) => setPageIndex(val)} className="my-3" />
             <AudioPageDisplay page={getPage()} {...pageColor} />
+            <Pagination count={4} page={pageIndex} onChange={(e, val) => setPageIndex(val)} className="mt-2 mb-3" />
         </div>
-        { midi ? <MidiDevice midi={midi} /> : <NoMidiDevice /> }
     </div>
 }
 
-const NoMidiDevice = () => <div>No Midi Device</div>
-
-interface MidiDeviceProps {
-    readonly midi: MidiProps;
-}
-
-const MidiDevice = (props: MidiDeviceProps) => {
-
-    const { inputName, manufacturer } = props.midi;
-
-    return <div className="mt-4 mx-2">
-        <div>Midi device: {inputName}</div>
-        <div>Manufacturer: {manufacturer}</div>
-    </div>;
-}
-
-export default IndexPage
+export default ShowPage

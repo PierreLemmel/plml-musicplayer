@@ -3,16 +3,21 @@ import { AppProps } from 'next/app'
 
 import '../styles/index.css'
 import { AppContext, AppContextProps } from '../contexts/appContext'
-import { getMidiMessage, MidiMessage, MidiProps } from '../audio/midi'
-import { AudioPageProps, getDefaultAudioPage } from '../audio/audioManagement'
+import { getMidiMessage, MidiMessage, MidiProps } from '../services/audio/midi'
+import { AudioElementProps, AudioPageProps, getDefaultAudioPage } from '../services/audio/audio'
 import Head from 'next/head'
 import { createTheme } from '@mui/material'
 import { ThemeProvider } from '@mui/system'
 import { HotKeyContext, HotkeysContextProps } from '../contexts/hotkeysContext'
+import Header from '../components/header'
+import { onAuthChanged, useAuth, useUserData } from '../services/core/firebase'
+import { User } from 'firebase/auth'
+import { ShowDataModel, ShowPageDataModel } from '../services/datastore/shows'
 
 const App = ({ Component, pageProps }: AppProps) => {
 
     const [midi, setMidi] = useState<MidiProps>();
+    const [user, setUser] = useState<User>();
 
     const page1Ref = useRef<AudioPageProps>(getDefaultAudioPage(1));
     const [page1, setPage1] = useState<AudioPageProps>(page1Ref.current);
@@ -26,6 +31,8 @@ const App = ({ Component, pageProps }: AppProps) => {
     const page4Ref = useRef<AudioPageProps>(getDefaultAudioPage(4));
     const [page4, setPage4] = useState<AudioPageProps>(page4Ref.current);
 
+
+    // Midi
     useEffect(() => {
         navigator.requestMIDIAccess()
             .then(access => {
@@ -76,16 +83,6 @@ const App = ({ Component, pageProps }: AppProps) => {
         pageSetter({...page});
     }
 
-    const appContext: AppContextProps = {
-        midi,
-        pages: {
-            page1: page1,
-            page2: page2,
-            page3: page3,
-            page4: page4
-        }
-    }
-
     const getPageAndSetter = (index: number): [AudioPageProps, React.Dispatch<React.SetStateAction<AudioPageProps>>] => {
         switch(index) {
             case 1: return [page1Ref.current, setPage1];
@@ -94,12 +91,17 @@ const App = ({ Component, pageProps }: AppProps) => {
             case 4: return [page4Ref.current, setPage4];
         }
     };
+
+
+    // Theme
     const muiTheme = createTheme({
         palette: {
             mode: 'dark',
         },
     });
 
+
+    // Hotkeys
     const hkMapRef = useRef<Map<string, () => void>>(new Map());
 
     const hkContext: HotkeysContextProps = {
@@ -121,15 +123,54 @@ const App = ({ Component, pageProps }: AppProps) => {
         return () => document.removeEventListener("keydown", globalKeyDownHandler);
     }, [])
 
+
+    // Persistency
+    onAuthChanged(user => {
+        setUser(user);
+    });
+    const show = useUserData<ShowDataModel>("shows/Default");
+
+    if (show) {
+        const applyUserDataToPage = (dm: ShowPageDataModel, page: AudioPageProps) => {
+            Object.keys(dm).map(str => Number.parseInt(str)).forEach(idx => {
+
+                const newValue: AudioElementProps = {
+                    ...page.values[idx - 1],
+                    ...dm[idx.toString()]
+                }
+                page.values.splice(idx - 1, 1, newValue);
+            });
+        }
+
+        applyUserDataToPage(show.pages.page1, page1);
+        applyUserDataToPage(show.pages.page2, page2);
+        applyUserDataToPage(show.pages.page3, page3);
+        applyUserDataToPage(show.pages.page4, page4);
+    }
+
+    // AppContext
+    const appContext: AppContextProps = {
+        midi,
+        user,
+        showName: show?.name ?? "",
+        pages: {
+            page1: page1,
+            page2: page2,
+            page3: page3,
+            page4: page4
+        }
+    }
+
     return <ThemeProvider theme={muiTheme}>
         <AppContext.Provider value={appContext}>
         <HotKeyContext.Provider value={hkContext}>
             <Head>
                 <title>Plml MusicPlayer</title>
                 <meta name="viewport" content="initial-scale=1.0, width=device-width" />
-                <link rel="shortcut icon" href="favicon.ico" />
+                <link rel="icon" href="favicon.ico" />
             </Head>
-            <div className="m-0 w-screen h-screen overflow-hidden bg-slate-900 text-gray-300">
+            <div className="m-0 w-screen h-screen bg-slate-900 text-gray-300 overflow-x-hidden">
+                <Header />
                 <Component {...pageProps} />
             </div>
         </HotKeyContext.Provider>

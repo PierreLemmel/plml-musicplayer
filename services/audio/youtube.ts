@@ -1,30 +1,27 @@
 import ytdl from 'ytdl-core';
 import fs from 'fs';
-import { delay, randomInt } from './utils';
-import { getFileStorage } from './firebase';
+import { delay, randomInt } from '../core/utils';
+import { getFileStorage } from '../core/firebase';
 import { ref, uploadBytes, getMetadata } from "firebase/storage";
+import { YoutubeAudioClip } from './audio';
 
-interface MusicInfo {
-    readonly title: string;
-    readonly author: string;
-    readonly url: string;
-}
 
 const getStorageUrlFromId = (id: string) => `https://firebasestorage.googleapis.com/v0/b/plml-musicplayer.appspot.com/o/music%2F${id}?alt=media`;
 
 const garbageStr = " - Topic";
 const cleanAuthorNameFromYtdlGarbage = (author: string) => author.endsWith(garbageStr) ? author.slice(0, -garbageStr.length) : author;
 
-const createMusicInfo = (id: string, title: string, author: string): MusicInfo  => {
+const createMusicInfo = (id: string, title: string, author: string): YoutubeAudioClip  => {
     return {
         title,
         author: cleanAuthorNameFromYtdlGarbage(author),
-        url: getStorageUrlFromId(id)
+        url: getStorageUrlFromId(id),
+        source: "Youtube"
     }
 }
 
 const interval = 50;
-export const cacheMusic = async (id: string) : Promise<MusicInfo> => {
+export const cacheMusic = async (id: string) : Promise<YoutubeAudioClip> => {
     
     console.log(`Adding music to cache with id '${id}'.`);
 
@@ -58,7 +55,8 @@ export const cacheMusic = async (id: string) : Promise<MusicInfo> => {
                 contentType: "audio/mpeg",
                 customMetadata: {
                     "title": title,
-                    "author": author
+                    "author": author,
+                    "source": "Youtube"
                 }
             });
 
@@ -77,7 +75,7 @@ export const cacheMusic = async (id: string) : Promise<MusicInfo> => {
     return createMusicInfo(id, title, author);
 }
 
-export const tryGetFromCache = async (id: string) : Promise<MusicInfo|null> => {
+export const tryGetFromCache = async (id: string) : Promise<YoutubeAudioClip|null> => {
 
     const storage = getFileStorage();
     const storageRef = ref(storage, `music/${id}`);

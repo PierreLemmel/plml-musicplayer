@@ -1,10 +1,12 @@
+import { User } from "firebase/auth";
 import { createContext, useContext } from "react";
-import { AudioPageProps, getDefaultAudioPage } from "../audio/audioManagement";
-import { MidiProps } from "../audio/midi";
+import { AudioPageProps, getDefaultAudioPage } from "../services/audio/audio";
+import { MidiProps } from "../services/audio/midi";
 
 export interface AppContextProps {
-    readonly midi: MidiProps |null;
-
+    readonly midi: MidiProps|null;
+    readonly user: User|null;
+    readonly showName: string;
     readonly pages: {
         readonly page1: AudioPageProps,
         readonly page2: AudioPageProps,
@@ -16,6 +18,8 @@ export interface AppContextProps {
 export const getDefaultAppContext = (): AppContextProps => {
     return {
         midi: null,
+        user: null,
+        showName: "Default",
         pages: {
             page1: getDefaultAudioPage(1),
             page2: getDefaultAudioPage(2),
