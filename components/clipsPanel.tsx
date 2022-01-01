@@ -1,5 +1,6 @@
 import { Grid } from "@mui/material";
-import { MutableRefObject, useRef } from "react";
+import { useRef } from "react";
+import { useAppContext } from "../contexts/appContext";
 import { AudioPageProps, AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
 
 interface AudioPageDisplayProps {
@@ -20,14 +21,21 @@ const reorderedIndex = (idx: number) => {
     return 4 * (4 - row) + col;
 }
 
-const AudioPageDisplay = (props: AudioPageDisplayProps) => {
+const ClipsPanel = (props: AudioPageDisplayProps) => {
     const { page } = props;
+
+    const {
+        controls: { volume1, volume2, volume3, volume4 }
+    } = useAppContext();
+
+    const volumes = [volume1, volume2, volume3, volume4];
+
     return <>
-        <Grid container className="w-full max-w-[115vh]">
+        <Grid container className="w-full">
             {[...page.values]
                 .sort((lhs, rhs) => reorderedIndex(lhs.index) - reorderedIndex(rhs.index))
                 .map((audioElt) => <Grid item xs={3} key={`audio-cell-${audioElt.index}`}>
-                    <AudioCellDisplay audioElt={audioElt} {...props}/>
+                    <AudioCellDisplay audioElt={audioElt} volume={volumes[(audioElt.index - 1) % 4]} {...props}/>
                 </Grid>)
             }
         </Grid>
@@ -42,6 +50,8 @@ interface AudioCellDisplayProps {
     readonly offOutline: string;
     readonly onColor: string;
     readonly onOutline: string;
+
+    readonly volume: number;
 }
 
 
@@ -51,7 +61,8 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         audioElt: { index, isOn, clip, playProperties },
         offColor, offOutline,
         onColor, onOutline,
-        visible
+        visible,
+        volume
     } = props;
 
     const audioRef = useRef<HTMLAudioElement>();
@@ -64,6 +75,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
     if (audio) {
 
+        audio.volume = volume;
         if (isOn) {
             
             if(audio.paused)
@@ -83,7 +95,6 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
                 rounded-lg text-white text-center flex flex-col justify-center items-center
                 outline outline-3 p-4 italic
                 h-28 sm:h-32 md:h-40 lg:h-52 xl:h-48 2xl:h-44
-                max-h-[16vh]
                 transition-colors`}
             >
                 {
@@ -98,7 +109,8 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
             <div className="mt-2 text-xs pl-2">PAD {(index - 1) % 16 + 1}</div>
         </div>}
         {clip && <audio ref={audioRef} src={clip.url} />}
-        </>
+    </>
 }
 
-export default AudioPageDisplay;
+
+export default ClipsPanel;

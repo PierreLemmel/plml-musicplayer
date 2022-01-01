@@ -13,23 +13,32 @@ export interface AppContextProps {
         readonly page3: AudioPageProps,
         readonly page4: AudioPageProps,
     }
-}
-
-export const getDefaultAppContext = (): AppContextProps => {
-    return {
-        midi: null,
-        user: null,
-        showName: "Default",
-        pages: {
-            page1: getDefaultAudioPage(1),
-            page2: getDefaultAudioPage(2),
-            page3: getDefaultAudioPage(3),
-            page4: getDefaultAudioPage(4),
-        }
+    readonly controls: {
+        readonly volume1: number;
+        readonly volume2: number;
+        readonly volume3: number;
+        readonly volume4: number;
     }
 }
 
-export const AppContext = createContext<AppContextProps>(getDefaultAppContext());
+
+export const AppContext = createContext<AppContextProps>({
+    midi: null,
+    user: null,
+    showName: "Default",
+    pages: {
+        page1: getDefaultAudioPage(1),
+        page2: getDefaultAudioPage(2),
+        page3: getDefaultAudioPage(3),
+        page4: getDefaultAudioPage(4),
+    },
+    controls: {
+        volume1: 100.0,
+        volume2: 100.0,
+        volume3: 100.0,
+        volume4: 100.0
+    }
+});
 
 export const useAppContext = () => {
     return useContext(AppContext);

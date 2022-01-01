@@ -14,6 +14,8 @@ import { onAuthChanged, useAuth, useUserData } from '../services/core/firebase'
 import { User } from 'firebase/auth'
 import { ShowDataModel, ShowPageDataModel } from '../services/datastore/shows'
 
+let foo = 0;
+let bar = 0;
 const App = ({ Component, pageProps }: AppProps) => {
 
     const [midi, setMidi] = useState<MidiProps>();
@@ -31,6 +33,14 @@ const App = ({ Component, pageProps }: AppProps) => {
     const page4Ref = useRef<AudioPageProps>(getDefaultAudioPage(4));
     const [page4, setPage4] = useState<AudioPageProps>(page4Ref.current);
 
+    const volumesRef = useRef<{
+        values: number[],
+        updating: boolean
+    }>({
+        values: new Array(4).fill(1.0),
+        updating: false
+    })
+    const [volumes, setVolumes] = useState<number[]>(volumesRef.current.values);
 
     // Midi
     useEffect(() => {
@@ -60,15 +70,20 @@ const App = ({ Component, pageProps }: AppProps) => {
 
     const handleMidiMessage = (msg: MidiMessage, timeStamp: number) => {
 
-        const isOn = msg.type === "NoteOn";
-        const isOff = msg.type === "NoteOff";
+        const type = msg.type;
+        if (type === "NoteOn" || type === "NoteOff") {
 
-        if (!(isOn || isOff)) {
-            return;
+            const key = msg.key;
+            handleMidiNote(key, type === "NoteOn");
         }
+        else if (msg.type === "ControlChange") {
+            
+            const { controllerNumber, controllerValue } = msg;
+            handleMidiCC(controllerNumber, controllerValue);
+        }
+    }
 
-        const key = msg.key;
-
+    const handleMidiNote = (key: number, isOn: boolean) => {
         if (key >= 4 * 16) {
             return;
         }
@@ -84,6 +99,22 @@ const App = ({ Component, pageProps }: AppProps) => {
         page.values.splice(idx, 1, newValue);
 
         pageSetter({...page});
+    }
+
+    const handleMidiCC = (control: number, value: number) => {
+
+        const vRef = volumesRef.current;
+        const idx = (control - 1) % 4;
+        
+        vRef.values[idx] = value / 127.0;
+
+        if (!vRef.updating) {
+            vRef.updating = true;
+            setTimeout(() => {
+                setVolumes([...volumesRef.current.values]);
+                vRef.updating = false;
+            }, 100)
+        }
     }
 
     const getPageAndSetter = (index: number): [AudioPageProps, React.Dispatch<React.SetStateAction<AudioPageProps>>] => {
@@ -161,6 +192,12 @@ const App = ({ Component, pageProps }: AppProps) => {
             page2: page2,
             page3: page3,
             page4: page4
+        },
+        controls: {
+            volume1: volumes[0],
+            volume2: volumes[1],
+            volume3: volumes[2],
+            volume4: volumes[3],
         }
     }
 
@@ -173,7 +210,7 @@ const App = ({ Component, pageProps }: AppProps) => {
                 <link rel="icon" href="favicon.ico" />
             </Head>
             <div className="m-0 w-screen h-screen bg-slate-900 text-gray-300 overflow-x-hidden">
-                {/* <Header /> */}
+                <Header />
                 <Component {...pageProps} />
             </div>
         </HotKeyContext.Provider>
