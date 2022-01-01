@@ -18,7 +18,8 @@ export interface AppContextProps {
         readonly volume2: number;
         readonly volume3: number;
         readonly volume4: number;
-    }
+    },
+    readonly appReady: boolean;
 }
 
 
@@ -37,7 +38,8 @@ export const AppContext = createContext<AppContextProps>({
         volume2: 100.0,
         volume3: 100.0,
         volume4: 100.0
-    }
+    },
+    appReady: false
 });
 
 export const useAppContext = () => {

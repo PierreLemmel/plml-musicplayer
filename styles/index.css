@@ -3,3 +3,15 @@
 
 /* purgecss end ignore */
 @tailwind utilities;
+
+.center-child {
+    @apply flex flex-row items-center justify-center
+}
+
+.centered-row {
+    @apply flex flex-row items-center justify-center
+}
+
+.centered-col {
+    @apply flex flex-col items-center justify-center
+}

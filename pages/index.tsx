@@ -4,13 +4,15 @@ import ClipsPanel from '../components/clipsPanel';
 import { useAppContext } from '../contexts/appContext'
 import { useHotKeyContext } from '../contexts/hotkeysContext';
 import ControlPanel from '../components/controlPanel';
+import Overlay from '../components/overlay';
 
 const ShowPage = () => {
 
     const [pageIndex, setPageIndex] = useState<number>(1);
 
     const {
-        pages: { page1, page2, page3, page4 }
+        pages: { page1, page2, page3, page4 },
+        appReady
     } = useAppContext();
 
     const hkContext = useHotKeyContext();
@@ -31,8 +33,8 @@ const ShowPage = () => {
     hkContext.setHotkey("\"", () => setPageIndex(3));
     hkContext.setHotkey("'", () => setPageIndex(4));
     
-    return <div className="px-3 flex flex-row justify-center items-center">
-        <div className="w-full lg:w-1/2 flex flex-col justify-center items-center">
+    return <div className="px-3 centered-row">
+        <div className="w-full lg:w-1/2 centered-col">
             <div>
                 <ClipsPanel
                     page={page1} visible={pageIndex === 1}
@@ -67,11 +69,20 @@ const ShowPage = () => {
         </div>
         <div className={`
             w-full min-h-[50vh] h-full lg:w-1/2 ml-6
-            flex flex-row justify-center items-center
+            center-child
         `}>
             <ControlPanel />
         </div>
+        <AppReadyWarning visible={!appReady} />
     </div>
 }
+
+const AppReadyWarning = (props: { visible: boolean}) => <Overlay visible={props.visible}>
+    <div className="w-full h-full centered-col bg-stone-700/90">
+        <div className="text-8xl">Click on screen to enable app.</div>
+        <div className="text-2xl mt-6">Websites don't allow us to play audio if user didn't interract first with the page.</div>
+    </div>
+</Overlay>
+
 
 export default ShowPage

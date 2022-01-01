@@ -10,12 +10,10 @@ import { createTheme } from '@mui/material'
 import { ThemeProvider } from '@mui/system'
 import { HotKeyContext, HotkeysContextProps } from '../contexts/hotkeysContext'
 import Header from '../components/header'
-import { onAuthChanged, useAuth, useUserData } from '../services/core/firebase'
+import { onAuthChanged, useUserData } from '../services/core/firebase'
 import { User } from 'firebase/auth'
 import { ShowDataModel, ShowPageDataModel } from '../services/datastore/shows'
 
-let foo = 0;
-let bar = 0;
 const App = ({ Component, pageProps }: AppProps) => {
 
     const [midi, setMidi] = useState<MidiProps>();
@@ -32,6 +30,8 @@ const App = ({ Component, pageProps }: AppProps) => {
 
     const page4Ref = useRef<AudioPageProps>(getDefaultAudioPage(4));
     const [page4, setPage4] = useState<AudioPageProps>(page4Ref.current);
+
+    const [userInterractedWithPage, setUserInterractedWithPage] = useState<boolean>();
 
     const volumesRef = useRef<{
         values: number[],
@@ -182,6 +182,15 @@ const App = ({ Component, pageProps }: AppProps) => {
         applyUserDataToPage(show.pages.page4, page4);
     }
 
+
+    // Page ready
+    useEffect(() => {
+        window.onclick = () => {
+            setUserInterractedWithPage(true);
+            window.onclick = undefined;
+        }
+    }, []);
+
     // AppContext
     const appContext: AppContextProps = {
         midi,
@@ -198,7 +207,8 @@ const App = ({ Component, pageProps }: AppProps) => {
             volume2: volumes[1],
             volume3: volumes[2],
             volume4: volumes[3],
-        }
+        },
+        appReady: userInterractedWithPage
     }
 
     return <ThemeProvider theme={muiTheme}>
@@ -217,5 +227,4 @@ const App = ({ Component, pageProps }: AppProps) => {
         </AppContext.Provider>
     </ThemeProvider>;
 }
-
 export default App
