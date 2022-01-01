@@ -41,14 +41,17 @@ const App = ({ Component, pageProps }: AppProps) => {
 
                 const mpd226 = inputs.get("input-0");
 
+                const inputName = mpd226.name!;
+                const manufacturer = mpd226.manufacturer!;
+
+                console.info(`Midi device detected: ${inputName} / ${manufacturer}`);
                 setMidi({
-                    inputName: mpd226.name!,
-                    manufacturer: mpd226.manufacturer!
+                    inputName,
+                    manufacturer
                 });
 
                 mpd226.onmidimessage = msgEvent => {
                     const { data, timeStamp } = msgEvent;
-
                     const msg = getMidiMessage(data);
                     handleMidiMessage(msg, timeStamp);
                 }
@@ -170,7 +173,7 @@ const App = ({ Component, pageProps }: AppProps) => {
                 <link rel="icon" href="favicon.ico" />
             </Head>
             <div className="m-0 w-screen h-screen bg-slate-900 text-gray-300 overflow-x-hidden">
-                <Header />
+                {/* <Header /> */}
                 <Component {...pageProps} />
             </div>
         </HotKeyContext.Provider>

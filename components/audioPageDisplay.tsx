@@ -4,6 +4,7 @@ import { AudioPageProps, AudioElementProps, defaultPlayProperties } from "../ser
 
 interface AudioPageDisplayProps {
     readonly page: AudioPageProps;
+    readonly visible: boolean;
 
     readonly offColor: string;
     readonly offOutline: string;
@@ -21,12 +22,11 @@ const reorderedIndex = (idx: number) => {
 
 const AudioPageDisplay = (props: AudioPageDisplayProps) => {
     const { page } = props;
-
     return <>
-        <Grid container className="w-full">
+        <Grid container className="w-full max-w-[115vh]">
             {[...page.values]
                 .sort((lhs, rhs) => reorderedIndex(lhs.index) - reorderedIndex(rhs.index))
-                .map((audioElt, i) => <Grid item xs={3} key={`audio-cell-${i}`}>
+                .map((audioElt) => <Grid item xs={3} key={`audio-cell-${audioElt.index}`}>
                     <AudioCellDisplay audioElt={audioElt} {...props}/>
                 </Grid>)
             }
@@ -36,6 +36,7 @@ const AudioPageDisplay = (props: AudioPageDisplayProps) => {
 
 interface AudioCellDisplayProps {
     readonly audioElt: AudioElementProps;
+    readonly visible: boolean;
 
     readonly offColor: string;
     readonly offOutline: string;
@@ -45,10 +46,12 @@ interface AudioCellDisplayProps {
 
 
 const AudioCellDisplay = (props: AudioCellDisplayProps) => {
+
     const { 
         audioElt: { index, isOn, clip, playProperties },
         offColor, offOutline,
-        onColor, onOutline
+        onColor, onOutline,
+        visible
     } = props;
 
     const audioRef = useRef<HTMLAudioElement>();
@@ -70,29 +73,32 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
             }
         }
         else {
-            
             audio.pause();
         }
     }
 
-    return <div className="m-2 flex flex-col pt-1 pl-1">
-        <div className={`${isOn ? onColor : offColor} ${isOn ? onOutline : offOutline} 
-            rounded-lg text-white text-center flex flex-col justify-center items-center
-            outline outline-3 p-4 italic
-            h-28 sm:h-32 md:h-40 lg:h-52 xl:h-48 2xl:h-44 transition-colors`}
-        >
-            {
-                clip ? 
-                <>
-                    <div className="text-xl">{clip.title}</div>
-                    <div className="">{clip?.author}</div>
-                </> :
-                <div>-</div>
-            }
-        </div>
-        <div className="mt-2 text-xs pl-2">PAD {(index - 1) % 16 + 1}</div>
+    return <>
+        {visible && <div className="m-2 flex flex-col pt-1 pl-1">
+            <div className={`${isOn ? onColor : offColor} ${isOn ? onOutline : offOutline} 
+                rounded-lg text-white text-center flex flex-col justify-center items-center
+                outline outline-3 p-4 italic
+                h-28 sm:h-32 md:h-40 lg:h-52 xl:h-48 2xl:h-44
+                max-h-[16vh]
+                transition-colors`}
+            >
+                {
+                    clip ? 
+                    <>
+                        <div className="xl:text-xl">{clip.title}</div>
+                        <div className="">{clip.author}</div>
+                    </> :
+                    <div>-</div>
+                }
+            </div>
+            <div className="mt-2 text-xs pl-2">PAD {(index - 1) % 16 + 1}</div>
+        </div>}
         {clip && <audio ref={audioRef} src={clip.url} />}
-    </div>
+        </>
 }
 
 export default AudioPageDisplay;

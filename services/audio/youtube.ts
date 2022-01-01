@@ -16,14 +16,15 @@ const createMusicInfo = (id: string, title: string, author: string): YoutubeAudi
         title,
         author: cleanAuthorNameFromYtdlGarbage(author),
         url: getStorageUrlFromId(id),
-        source: "Youtube"
+        source: "Youtube",
+        id
     }
 }
 
 const interval = 50;
 export const cacheMusic = async (id: string) : Promise<YoutubeAudioClip> => {
     
-    console.log(`Adding music to cache with id '${id}'.`);
+    console.info(`Adding music to cache with id '${id}'.`);
 
     let downloaded = false;
     const tempFile = `tmp/${Date.now()}-${randomInt(1000)}`;
@@ -60,7 +61,7 @@ export const cacheMusic = async (id: string) : Promise<YoutubeAudioClip> => {
                 }
             });
 
-            console.log(`Added music to cache: '${result.metadata.fullPath}'.`);
+            console.info(`Added music to cache: '${result.metadata.fullPath}'.`);
         }
         
         done = true;
