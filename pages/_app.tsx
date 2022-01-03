@@ -2,34 +2,26 @@ import React, { useEffect, useRef, useState } from 'react'
 import { AppProps } from 'next/app'
 
 import '../styles/index.css'
-import { AppContext, AppContextProps } from '../contexts/appContext'
+import { AppContext, AppContextProps, AudioElementUpdateProps } from '../contexts/appContext'
 import { getMidiMessage, MidiMessage, MidiProps } from '../services/audio/midi'
-import { AudioElementProps, AudioPageProps, getDefaultAudioPage } from '../services/audio/audio'
+import { AudioElementProps, getDefaultElements } from '../services/audio/audio'
 import Head from 'next/head'
 import { createTheme } from '@mui/material'
 import { ThemeProvider } from '@mui/system'
 import { HotKeyContext, HotkeysContextProps } from '../contexts/hotkeysContext'
 import Header from '../components/header'
-import { onAuthChanged, useUserData } from '../services/core/firebase'
+import { onAuthChanged, updateUserData, useUserData } from '../services/core/firebase'
 import { User } from 'firebase/auth'
-import { ShowDataModel, ShowPageDataModel } from '../services/datastore/shows'
+import { AudioElementsMap, ShowDataModel } from '../services/datastore/shows'
+import { Timestamp } from 'firebase/firestore'
 
 const App = ({ Component, pageProps }: AppProps) => {
 
     const [midi, setMidi] = useState<MidiProps>();
     const [user, setUser] = useState<User>();
 
-    const page1Ref = useRef<AudioPageProps>(getDefaultAudioPage(1));
-    const [page1, setPage1] = useState<AudioPageProps>(page1Ref.current);
-
-    const page2Ref = useRef<AudioPageProps>(getDefaultAudioPage(2));
-    const [page2, setPage2] = useState<AudioPageProps>(page2Ref.current);
-
-    const page3Ref = useRef<AudioPageProps>(getDefaultAudioPage(3));
-    const [page3, setPage3] = useState<AudioPageProps>(page3Ref.current);
-
-    const page4Ref = useRef<AudioPageProps>(getDefaultAudioPage(4));
-    const [page4, setPage4] = useState<AudioPageProps>(page4Ref.current);
+    const audioElementsRef = useRef<AudioElementProps[]>(getDefaultElements());
+    const [audioElements, setAudioElements] = useState<AudioElementProps[]>(audioElementsRef.current);
 
     const [userInterractedWithPage, setUserInterractedWithPage] = useState<boolean>();
 
@@ -84,21 +76,21 @@ const App = ({ Component, pageProps }: AppProps) => {
     }
 
     const handleMidiNote = (key: number, isOn: boolean) => {
-        if (key >= 4 * 16) {
+        if (key >= 64) {
             return;
         }
 
-        const [page, pageSetter] = getPageAndSetter(Math.floor(key / 16) + 1);
+        const idx = key;
 
-        const idx = key % 16;
+        const elements = audioElementsRef.current;
 
         const newValue = {
-            ...page.values[idx],
+            ...elements[idx],
             isOn
         };
-        page.values.splice(idx, 1, newValue);
+        elements.splice(idx, 1, newValue);
 
-        pageSetter({...page});
+        setAudioElements([...elements]);
     }
 
     const handleMidiCC = (control: number, value: number) => {
@@ -116,16 +108,6 @@ const App = ({ Component, pageProps }: AppProps) => {
             }, 100)
         }
     }
-
-    const getPageAndSetter = (index: number): [AudioPageProps, React.Dispatch<React.SetStateAction<AudioPageProps>>] => {
-        switch(index) {
-            case 1: return [page1Ref.current, setPage1];
-            case 2: return [page2Ref.current, setPage2];
-            case 3: return [page3Ref.current, setPage3];
-            case 4: return [page4Ref.current, setPage4];
-        }
-    };
-
 
     // Theme
     const muiTheme = createTheme({
@@ -165,21 +147,17 @@ const App = ({ Component, pageProps }: AppProps) => {
     const show = useUserData<ShowDataModel>("shows/Default");
 
     if (show) {
-        const applyUserDataToPage = (dm: ShowPageDataModel, page: AudioPageProps) => {
-            Object.keys(dm).map(str => Number.parseInt(str)).forEach(idx => {
 
-                const newValue: AudioElementProps = {
-                    ...page.values[idx - 1],
-                    ...dm[idx.toString()]
-                }
-                page.values.splice(idx - 1, 1, newValue);
-            });
-        }
+        const dm = show.elements;
+        Object.keys(dm).map(str => Number.parseInt(str)).forEach(idx => {
 
-        applyUserDataToPage(show.pages.page1, page1);
-        applyUserDataToPage(show.pages.page2, page2);
-        applyUserDataToPage(show.pages.page3, page3);
-        applyUserDataToPage(show.pages.page4, page4);
+            const newValue: AudioElementProps = {
+                ...audioElements[idx - 1],
+                ...dm[idx.toString()]
+            }
+            console.log(audioElements)
+            audioElements.splice(idx - 1, 1, newValue);
+        });
     }
 
 
@@ -191,25 +169,34 @@ const App = ({ Component, pageProps }: AppProps) => {
         }
     }, []);
 
+
+
     // AppContext
+    const updateAudioElement = (index: number, data: Partial<AudioElementUpdateProps>) => {
+
+        const updateData: Partial<ShowDataModel> = {
+            modificationTime: Timestamp.now()
+        }
+        
+        updateUserData<ShowDataModel>("shows/Default", {
+        })
+    }
+
+
     const appContext: AppContextProps = {
         midi,
         user,
         showName: show?.name ?? "",
-        pages: {
-            page1: page1,
-            page2: page2,
-            page3: page3,
-            page4: page4
-        },
+        audioElements,
         controls: {
             volume1: volumes[0],
             volume2: volumes[1],
             volume3: volumes[2],
             volume4: volumes[3],
         },
-        appReady: userInterractedWithPage
-    }
+        appReady: userInterractedWithPage,
+        updateAudioElement
+    };
 
     return <ThemeProvider theme={muiTheme}>
         <AppContext.Provider value={appContext}>

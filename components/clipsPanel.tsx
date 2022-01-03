@@ -1,13 +1,13 @@
 import { Grid } from "@mui/material";
 import { useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
-import { AudioPageProps, AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
+import { AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
 import { formatMinuteSeconds } from "../services/core/utils";
 import Overlay from "./overlay";
 import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
 
 interface ClipsPanelProps {
-    readonly page: AudioPageProps;
+    readonly elements: AudioElementProps[];
     readonly visible: boolean;
 
     readonly showPadTexts: boolean;
@@ -25,17 +25,17 @@ const reorderedIndex = (idx: number) => {
 }
 
 const ClipsPanel = (props: ClipsPanelProps) => {
-    const { page } = props;
+    const { elements } = props;
 
     const {
         controls: { volume1, volume2, volume3, volume4 }
     } = useAppContext();
 
     const volumes = [volume1, volume2, volume3, volume4];
-
+    
     return <>
         <Grid container className="w-full">
-            {[...page.values]
+            {elements
                 .sort((lhs, rhs) => reorderedIndex(lhs.index) - reorderedIndex(rhs.index))
                 .map((audioElt) => <Grid item xs={3} key={`audio-cell-${audioElt.index}`}>
                     <AudioCellDisplay audioElt={audioElt} volume={volumes[(audioElt.index - 1) % 4]} {...props}/>

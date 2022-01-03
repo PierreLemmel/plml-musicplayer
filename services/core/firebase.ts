@@ -1,9 +1,9 @@
 import { initializeApp } from "firebase/app";
 import { getStorage } from "firebase/storage";
-import { getFirestore, doc, FirestoreError } from 'firebase/firestore';
+import { getFirestore, doc, FirestoreError, updateDoc, collection, DocumentData } from 'firebase/firestore';
 import { Auth, getAuth, signInWithPopup, GoogleAuthProvider, signOut, User } from "firebase/auth";
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { useDocument } from "react-firebase-hooks/firestore";
+import { useDocumentData } from "react-firebase-hooks/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCyLvFF8rAZUdqrUnupHTnIaKXtYfb31GM",
@@ -48,7 +48,8 @@ export const userSignOut = async () => {
 
 const firestore = getFirestore(app);
 
-const getDocument = (path: string) => {
+
+function getDocument(path: string) {
     return doc(firestore, path);
 }
 
@@ -58,16 +59,25 @@ export function useUserData<T>(path: string): T|undefined {
     const user = auth.currentUser;
 
     const docRef = user ? getDocument(`users-data/${user.uid}/${path}`) : undefined;
-    const [docData, loading, error] = useDocument(docRef);
+    const [docData, loading, error] = useDocumentData(docRef);
 
     let result: T|undefined;
     if (error) {
         console.error(error);
     }
     else if (docData) {
-        const unknownData: unknown = docData?.data(); 
+        const unknownData: unknown = docData; 
         result = unknownData as T;
     }
 
     return result;
+}
+
+export function updateUserData<T>(path: string, data: Partial<T>) {
+
+    const user = auth.currentUser;
+
+    const docRef = user ? getDocument(`users-data/${user.uid}/${path}`) : undefined;
+
+    updateDoc<DocumentData>(docRef, data);
 }

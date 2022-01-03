@@ -1,18 +1,17 @@
 import { User } from "firebase/auth";
 import { createContext, useContext } from "react";
-import { AudioPageProps, getDefaultAudioPage } from "../services/audio/audio";
+import { AudioElementProps, getDefaultElements } from "../services/audio/audio";
 import { MidiProps } from "../services/audio/midi";
+
+export interface AudioElementUpdateProps {
+
+}
 
 export interface AppContextProps {
     readonly midi: MidiProps|null;
     readonly user: User|null;
     readonly showName: string;
-    readonly pages: {
-        readonly page1: AudioPageProps,
-        readonly page2: AudioPageProps,
-        readonly page3: AudioPageProps,
-        readonly page4: AudioPageProps,
-    }
+    readonly audioElements: AudioElementProps[],
     readonly controls: {
         readonly volume1: number;
         readonly volume2: number;
@@ -20,6 +19,8 @@ export interface AppContextProps {
         readonly volume4: number;
     },
     readonly appReady: boolean;
+
+    readonly updateAudioElement: (index: number, data: Partial<AudioElementUpdateProps>) => void;
 }
 
 
@@ -27,19 +28,15 @@ export const AppContext = createContext<AppContextProps>({
     midi: null,
     user: null,
     showName: "Default",
-    pages: {
-        page1: getDefaultAudioPage(1),
-        page2: getDefaultAudioPage(2),
-        page3: getDefaultAudioPage(3),
-        page4: getDefaultAudioPage(4),
-    },
+    audioElements: getDefaultElements(),
     controls: {
         volume1: 100.0,
         volume2: 100.0,
         volume3: 100.0,
         volume4: 100.0
     },
-    appReady: false
+    appReady: false,
+    updateAudioElement: (index: number, data: Partial<AudioElementUpdateProps>) => {}
 });
 
 export const useAppContext = () => {

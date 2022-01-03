@@ -15,3 +15,7 @@ export function formatMinuteSeconds(inputSeconds: number) {
 
     return `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
 }
+
+export function range(length: number) {
+    return new Array(length).fill(0).map((val, i) => i);
+}

@@ -12,6 +12,7 @@ import {
     ComponentColorScheme,
     PlayProgressColorScheme
 } from '../components/themes/theme';
+import { range } from '../services/core/utils';
 
 
 const ShowPage = () => {
@@ -19,7 +20,7 @@ const ShowPage = () => {
     const [pageIndex, setPageIndex] = useState<number>(1);
 
     const {
-        pages: { page1, page2, page3, page4 },
+        audioElements,
         appReady
     } = useAppContext();
 
@@ -64,26 +65,14 @@ const ShowPage = () => {
         }
     ]
 
-    const showPadTexts = false;
     return <div className="px-3 centered-row">
         <div className="w-full lg:w-1/2 centered-col">
             <div>
-                <ClipsPanel
-                    page={page1} visible={pageIndex === 1}
-                    {...colorSchemes[0]} showPadTexts={showPadTexts}
-                />
-                <ClipsPanel
-                    page={page2} visible={pageIndex === 2}
-                    {...colorSchemes[1]} showPadTexts={showPadTexts}
-                />
-                <ClipsPanel
-                    page={page3} visible={pageIndex === 3}
-                    {...colorSchemes[2]} showPadTexts={showPadTexts}
-                />
-                <ClipsPanel
-                    page={page4} visible={pageIndex === 4}
-                    {...colorSchemes[3]} showPadTexts={showPadTexts}
-                />
+                {range(4).map(i => <ClipsPanel
+                    key={`clip-panel-${i}`}
+                    elements={audioElements.slice(i * 16, (i + 1) * 16)} visible={(pageIndex - 1) === i}
+                    {...colorSchemes[i]} showPadTexts={false}
+                />)}
             </div>
             <Pagination count={4} page={pageIndex} onChange={(e, val) => setPageIndex(val)} className="mt-2 mb-3" />
         </div>
