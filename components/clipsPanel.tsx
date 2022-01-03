@@ -1,16 +1,19 @@
 import { Grid } from "@mui/material";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
 import { AudioPageProps, AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
+import { formatMinuteSeconds } from "../services/core/utils";
+import Overlay from "./overlay";
+import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
 
-interface AudioPageDisplayProps {
+interface ClipsPanelProps {
     readonly page: AudioPageProps;
     readonly visible: boolean;
 
-    readonly offColor: string;
-    readonly offOutline: string;
-    readonly onColor: string;
-    readonly onOutline: string;
+    readonly showPadTexts: boolean;
+
+    readonly colorScheme: ComponentColorScheme;
+    readonly progressColorScheme: PlayProgressColorScheme;
 }
 
 const reorderedIndex = (idx: number) => {
@@ -21,7 +24,7 @@ const reorderedIndex = (idx: number) => {
     return 4 * (4 - row) + col;
 }
 
-const ClipsPanel = (props: AudioPageDisplayProps) => {
+const ClipsPanel = (props: ClipsPanelProps) => {
     const { page } = props;
 
     const {
@@ -46,10 +49,10 @@ interface AudioCellDisplayProps {
     readonly audioElt: AudioElementProps;
     readonly visible: boolean;
 
-    readonly offColor: string;
-    readonly offOutline: string;
-    readonly onColor: string;
-    readonly onOutline: string;
+    readonly showPadTexts: boolean;
+
+    readonly colorScheme: ComponentColorScheme;
+    readonly progressColorScheme: PlayProgressColorScheme;
 
     readonly volume: number;
 }
@@ -58,9 +61,13 @@ interface AudioCellDisplayProps {
 const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
     const { 
-        audioElt: { index, isOn, clip, playProperties },
-        offColor, offOutline,
-        onColor, onOutline,
+        audioElt: { index, isOn, clip, playProperties, name: clipName },
+        colorScheme: {
+            offColor, offOutline,
+            onColor, onOutline
+        },
+        showPadTexts,
+        progressColorScheme,
         visible,
         volume
     } = props;
@@ -68,25 +75,69 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     const audioRef = useRef<HTMLAudioElement>();
     const audio = audioRef.current;
 
-    const { startTime } = {
-        ...defaultPlayProperties,
-        ...playProperties
-    };
+    const [currentTime, setCurrentTime] = useState<number>(0);
+    const refreshIntervalRef = useRef<NodeJS.Timeout|null>(null);
 
-    if (audio) {
+    const [canPlay, setCanPlay] = useState<boolean>(true);
+
+    let progressComponent = undefined;
+
+    if (clip && audio) {
+
+        const { startTime, endTime } = {
+            ...defaultPlayProperties,
+            ...playProperties
+        };
 
         audio.volume = volume;
+
         if (isOn) {
             
-            if(audio.paused)
-            {
-                audio.currentTime = Math.max(audio.currentTime, startTime);
-                audio.play();
+            if (canPlay) {
+
+                if (!refreshIntervalRef.current) {
+                    refreshIntervalRef.current = setInterval(() => {
+                        setCurrentTime(audio.currentTime);
+                        if (duration - audio.currentTime < endTime) {
+                            audio.pause();
+                            clearInterval(refreshIntervalRef.current);
+                            refreshIntervalRef.current = null;
+                            setCanPlay(false);
+                        }
+                    }, 100);
+                }
+
+                if(audio.paused)
+                {
+                    audio.currentTime = Math.max(audio.currentTime, startTime);
+                    audio.play();
+                }
+
             }
         }
         else {
+
+            if (!canPlay) {
+                setCanPlay(true);
+                setCurrentTime(startTime);
+                audio.currentTime = startTime;
+            }
+
+            if (refreshIntervalRef.current) {
+                clearInterval(refreshIntervalRef.current);
+                refreshIntervalRef.current = null;
+            }
+
             audio.pause();
         }
+
+        const { duration }  = clip;
+        progressComponent = <AudioPlayProgress
+            {...{ progressColorScheme, startTime, endTime, currentTime, duration}}
+            setStartTime={st => console.log(st)}
+            setEndTime={et => console.log(et)}
+            setCurrentTime={ct => console.log(ct)}
+        />
     }
 
     return <>
@@ -95,22 +146,126 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
                 rounded-lg text-white text-center flex flex-col justify-center items-center
                 outline outline-3 p-4 italic
                 h-28 sm:h-32 md:h-40 lg:h-52 xl:h-48 2xl:h-44
-                transition-colors`}
+                transition-colors relative`}
             >
                 {
                     clip ? 
                     <>
-                        <div className="xl:text-xl">{clip.title}</div>
-                        <div className="">{clip.author}</div>
+                        <div className="xl:text-xl">{clipName}</div>
+                        {progressComponent}
                     </> :
                     <div>-</div>
                 }
             </div>
-            <div className="mt-2 text-xs pl-2">PAD {(index - 1) % 16 + 1}</div>
+            {showPadTexts && <div className="mt-2 text-xs pl-2">PAD {(index - 1) % 16 + 1}</div>}
         </div>}
         {clip && <audio ref={audioRef} src={clip.url} />}
+        
     </>
 }
 
+
+interface AudioPlayProgressProps {
+    readonly progressColorScheme: PlayProgressColorScheme;
+
+    readonly startTime: number;
+    readonly setStartTime: (startTime: number) => void;
+    readonly endTime: number;
+    readonly setEndTime: (endTime: number) => void;
+    readonly currentTime: number;
+    readonly setCurrentTime: (currentTime: number) => void;
+
+    readonly duration: number;
+}
+
+const AudioPlayProgress = (props: AudioPlayProgressProps) => {
+
+    const {
+        progressColorScheme: { inactiveColor, playedColor, notPlayedColor },
+        startTime, endTime, currentTime, duration
+    } = props;
+
+    const [overlay, setOverlay] = useState<boolean>(false);
+
+    const trackLeft = `${100.0 * startTime / duration}%`;
+    const trackRight = `${100.0 * endTime / duration}%`;
+    const playedLeft = trackLeft;
+    const playedRight = `${100.0 * (duration - currentTime) / duration}%`;
+
+    return <>
+        <div className={`
+            w-full h-[0.8em] absolute bottom-0
+            rounded-t rounded-b-lg overflow-hidden
+            ${inactiveColor}
+            transition-transform duration-300
+            hover:scale-110 hover:cursor-pointer`
+        } onClick={() => setOverlay(true)}>
+            <div className={`h-full ${notPlayedColor} absolute`} style={{
+                left: trackLeft,
+                right: trackRight
+            }}></div>
+            <div className={`h-full ${playedColor} absolute transition duration-100`} style={{
+                left: playedLeft,
+                right: playedRight
+            }}></div>
+        </div>
+        <PlayProgressOverlay visible={overlay} onExit={() => setOverlay(false)} {...props}/>
+    </>
+}
+
+
+interface PlayProgressOverlayProps extends AudioPlayProgressProps {
+
+    readonly visible: boolean;
+    readonly onExit: () => void;
+}
+
+const PlayProgressOverlay = (props: PlayProgressOverlayProps) => {
+    
+    const {
+        visible, onExit,
+        progressColorScheme: { inactiveColor, playedColor, notPlayedColor, borderColor },
+        startTime, endTime, currentTime, duration
+    } = props;
+
+    const trackLeft = `${100.0 * startTime / duration}%`;
+    const trackRight = `${100.0 * endTime / duration}%`;
+    const playedLeft = trackLeft;
+    const playedRight = `${100.0 * (duration - currentTime) / duration}%`;
+
+    return <Overlay visible={visible}>
+        <div
+            className="w-full h-full center-child bg-stone-700/80"
+            onClick={() => onExit()}
+        >
+            <div className="w-1/2 centered-col">
+                <div className="w-full -top-6 relative">
+                    <div className={`absolute -translate-x-1/2`} style={{left: trackLeft}}>
+                        {formatMinuteSeconds(startTime)}
+                    </div>
+                    <div className={`absolute translate-x-1/2`} style={{right: trackRight}}>
+                        {formatMinuteSeconds(duration - endTime)}
+                    </div>
+                </div>
+                <div className={`
+                    w-full h-10 relative 
+                    rounded-xl overflow-hidden
+                    border-2 ${borderColor}
+                    ${inactiveColor}
+                `}>
+                    <div className={`h-full ${notPlayedColor} absolute rounded-md`} style={{
+                        left: trackLeft,
+                        right: trackRight
+                    }}></div>
+                    <div className={`h-full ${playedColor} absolute rounded transition duration-100`} style={{
+                        left: playedLeft,
+                        right: playedRight
+                    }}></div>
+                </div>
+                <div className="mt-2">{formatMinuteSeconds(currentTime)} / {formatMinuteSeconds(duration)}</div>
+            </div>
+        </div>
+    </Overlay>
+}
 
 export default ClipsPanel;

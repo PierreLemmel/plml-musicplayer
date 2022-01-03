@@ -6,6 +6,7 @@ export interface AudioElementProps {
     readonly index: number;
     readonly isOn: boolean;
 
+    readonly name?: string;
     readonly clip?: AudioClip;
     readonly playProperties: Partial<PlayProperties>;
 }
@@ -32,6 +33,7 @@ interface AudioClipBase {
     readonly author: string;
     readonly url: string;
     readonly id: string;
+    readonly duration: number;
 }
 
 export interface YoutubeAudioClip extends AudioClipBase {

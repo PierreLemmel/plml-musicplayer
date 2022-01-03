@@ -11,13 +11,14 @@ const getStorageUrlFromId = (id: string) => `https://firebasestorage.googleapis.
 const garbageStr = " - Topic";
 const cleanAuthorNameFromYtdlGarbage = (author: string) => author.endsWith(garbageStr) ? author.slice(0, -garbageStr.length) : author;
 
-const createMusicInfo = (id: string, title: string, author: string): YoutubeAudioClip  => {
+const createMusicInfo = (id: string, title: string, author: string, duration: number): YoutubeAudioClip  => {
     return {
         title,
         author: cleanAuthorNameFromYtdlGarbage(author),
         url: getStorageUrlFromId(id),
         source: "Youtube",
-        id
+        id,
+        duration
     }
 }
 
@@ -32,7 +33,7 @@ export const cacheMusic = async (id: string) : Promise<YoutubeAudioClip> => {
     const ytUrl = `https://music.youtube.com/watch?v=${id}`;
 
     const ytInfo = await ytdl.getInfo(ytUrl);
-    const { title, author } = ytInfo.player_response.videoDetails;
+    const { title, author, lengthSeconds } = ytInfo.player_response.videoDetails;
 
     ytdl(ytUrl, {
         quality: 'highestaudio'
@@ -57,7 +58,8 @@ export const cacheMusic = async (id: string) : Promise<YoutubeAudioClip> => {
                 customMetadata: {
                     "title": title,
                     "author": author,
-                    "source": "Youtube"
+                    "source": "Youtube",
+                    "duration": lengthSeconds
                 }
             });
 
@@ -73,7 +75,7 @@ export const cacheMusic = async (id: string) : Promise<YoutubeAudioClip> => {
 
     fs.unlink(tempFile, err => err && console.log(err));
 
-    return createMusicInfo(id, title, author);
+    return createMusicInfo(id, title, author, Number.parseFloat(lengthSeconds));
 }
 
 export const tryGetFromCache = async (id: string) : Promise<YoutubeAudioClip|null> => {
@@ -85,8 +87,9 @@ export const tryGetFromCache = async (id: string) : Promise<YoutubeAudioClip|nul
         const meta = (await getMetadata(storageRef)).customMetadata;
         const title = meta["title"];
         const author = meta["author"];
+        const duration = Number.parseFloat(meta["duration"]);
 
-        return createMusicInfo(id, title, author);
+        return createMusicInfo(id, title, author, duration);
     }
     catch (err) {
         if (err.code === 'storage/object-not-found') {

@@ -3,6 +3,7 @@ import { AudioClip, PlayProperties } from "../audio/audio";
 
 export interface ShowPageDataModel {
     readonly [index: string]: {
+        readonly name: string;
         readonly clip: AudioClip;
         readonly playProperties: Partial<PlayProperties>;
     }

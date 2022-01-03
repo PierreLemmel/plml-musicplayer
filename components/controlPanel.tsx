@@ -1,8 +1,8 @@
-import { Slider } from "@mui/material";
 import { useAppContext } from "../contexts/appContext";
+import { ComponentColorScheme } from "./themes/theme";
 
 interface ControlPanelDisplayProps {
-
+    readonly colorScheme: ComponentColorScheme;
 }
 
 const ControlPanelDisplay = (props: ControlPanelDisplayProps) => {
@@ -10,11 +10,11 @@ const ControlPanelDisplay = (props: ControlPanelDisplayProps) => {
         controls: { volume1, volume2, volume3, volume4 }
     } = useAppContext();
 
-    return <div>
-        <VolumeSlider label="Volume 1" value={volume1} />
-        <VolumeSlider label="Volume 2" value={volume2} />
-        <VolumeSlider label="Volume 3" value={volume3} />
-        <VolumeSlider label="Volume 4" value={volume4} />
+    return <div className="centered-row">
+        <VolumeSlider label="Volume 1" value={volume1} {...props} />
+        <VolumeSlider label="Volume 2" value={volume2} {...props} />
+        <VolumeSlider label="Volume 3" value={volume3} {...props} />
+        <VolumeSlider label="Volume 4" value={volume4} {...props} />
     </div>
 }
 
@@ -23,63 +23,41 @@ interface VolumeSliderProps {
     readonly label: string;
     readonly value: number;
     readonly hasThumb?: boolean;
-}
-
-const defaultVolumeSliderProps: Partial<VolumeSliderProps> = {
-    hasThumb: false
+    readonly colorScheme: ComponentColorScheme;
 }
 
 const VolumeSlider = (props: VolumeSliderProps) => {
 
-    
-    const { label, value, hasThumb } = {
-        ...defaultVolumeSliderProps,
-        ...props
-    };
+    const {
+        label, value,
+        colorScheme: {
+            offColor, offOutline, onColor, onOutline
+        }
+    } = props;
 
-    const trackBorderRadius = '0.54em';
+    return <div>
+        <div className="text-center mb-4 italic">
+            {label}<br/>
+            {Math.round(value * 100)}%
+        </div>
+        <div className={`
+            h-[28rem] lg:h-[32rem] 2xl:h-[36rem] w-[2.9em] mx-6
+            ${offColor} rounded-md
+            outline outline-2 ${offOutline} relative`
+        }>
+            <div className={`
+                w-[90%] h-[37%] ml-[5%]
+                ${value !== 0 ? 'outline' : ''} outline-2 rounded-md
+                transition-all transition-300
+                ${onOutline} ${onColor}
+                absolute bottom-[0.4%]`
+            } style={{
+                height: `${99.2 * value}%`
+            }}>
 
-    const outlineDefault = 'solid 2px';
-    const outlineActiveColor = 'rgb(142, 142, 142)';
-    const outlineInactiveColor = 'rgb(92, 92, 92)';
-
-    return <Slider
-        className="h-[28rem] lg:h-[32rem] 2xl:h-[36rem] w-[1.85em] ml-6"
-        orientation="vertical"
-        aria-label={label}
-        min={0}
-        max={1.0}
-        value={value}
-        size="medium"
-        sx={{
-            '&:hover': {
-                cursor: 'default'
-            },
-            '& .MuiSlider-thumb': {
-                visibility: hasThumb ? 'visible' : 'hidden',
-                width: '2.65em',
-                height: '1.2em',
-                borderRadius: '0.42em',
-                outline: outlineDefault,
-                outlineColor: outlineActiveColor,
-                boxShadow: '0px 4px 4px 2px rgb(0 0 0 / 15%), 0px 1px 5px 0px rgb(0 0 0 / 35%)',
-                transition: '200ms',
-            },
-            '& .MuiSlider-thumb:before': {
-                boxShadow: 'none'
-            },
-            '& .MuiSlider-track': {
-                outline: outlineDefault,
-                outlineColor: outlineActiveColor,
-                borderRadius: trackBorderRadius,
-                transition: '200ms'
-            },
-            '& .MuiSlider-rail': {
-                borderRadius: trackBorderRadius,
-                outline: outlineDefault,
-                outlineColor: outlineInactiveColor
-            }
-        }} />;
-};
+            </div>
+        </div>
+    </div>
+}
 
 export default ControlPanelDisplay;

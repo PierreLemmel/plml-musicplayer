@@ -6,6 +6,14 @@ import { useHotKeyContext } from '../contexts/hotkeysContext';
 import ControlPanel from '../components/controlPanel';
 import Overlay from '../components/overlay';
 
+import {
+    grayAmberScheme, roseEmeraldScheme, tealPinkScheme, violetRedScheme,
+    defaultPlayProgressColorScheme,
+    ComponentColorScheme,
+    PlayProgressColorScheme
+} from '../components/themes/theme';
+
+
 const ShowPage = () => {
 
     const [pageIndex, setPageIndex] = useState<number>(1);
@@ -33,36 +41,48 @@ const ShowPage = () => {
     hkContext.setHotkey("\"", () => setPageIndex(3));
     hkContext.setHotkey("'", () => setPageIndex(4));
     
+    type ClipPanelColorScheme = {
+        readonly colorScheme: ComponentColorScheme,
+        readonly progressColorScheme: PlayProgressColorScheme
+    }
+    const colorSchemes: ClipPanelColorScheme[] = [
+        {
+            colorScheme: grayAmberScheme,
+            progressColorScheme: defaultPlayProgressColorScheme
+        },
+        {
+            colorScheme: violetRedScheme,
+            progressColorScheme: defaultPlayProgressColorScheme
+        },
+        {
+            colorScheme: tealPinkScheme,
+            progressColorScheme: defaultPlayProgressColorScheme
+        },
+        {
+            colorScheme: roseEmeraldScheme,
+            progressColorScheme: defaultPlayProgressColorScheme
+        }
+    ]
+
+    const showPadTexts = false;
     return <div className="px-3 centered-row">
         <div className="w-full lg:w-1/2 centered-col">
             <div>
                 <ClipsPanel
                     page={page1} visible={pageIndex === 1}
-                    offColor="bg-gray-400"
-                    offOutline="outline-gray-500"
-                    onColor="bg-amber-500"
-                    onOutline="outline-amber-600"
+                    {...colorSchemes[0]} showPadTexts={showPadTexts}
                 />
                 <ClipsPanel
                     page={page2} visible={pageIndex === 2}
-                    offColor="bg-violet-500"
-                    offOutline="outline-violet-600"
-                    onColor="bg-red-600"
-                    onOutline="outline-red-700"
+                    {...colorSchemes[1]} showPadTexts={showPadTexts}
                 />
                 <ClipsPanel
                     page={page3} visible={pageIndex === 3}
-                    offColor="bg-teal-500"
-                    offOutline="outline-teal-600"
-                    onColor="bg-pink-500"
-                    onOutline="outline-pink-600"
+                    {...colorSchemes[2]} showPadTexts={showPadTexts}
                 />
                 <ClipsPanel
                     page={page4} visible={pageIndex === 4}
-                    offColor="bg-rose-300"
-                    offOutline="outline-rose-400"
-                    onColor="bg-emerald-400"
-                    onOutline="outline-emerald-500"
+                    {...colorSchemes[3]} showPadTexts={showPadTexts}
                 />
             </div>
             <Pagination count={4} page={pageIndex} onChange={(e, val) => setPageIndex(val)} className="mt-2 mb-3" />
@@ -71,7 +91,7 @@ const ShowPage = () => {
             w-full min-h-[50vh] h-full lg:w-1/2 ml-6
             center-child
         `}>
-            <ControlPanel />
+            <ControlPanel {...colorSchemes[pageIndex - 1]}/>
         </div>
         <AppReadyWarning visible={!appReady} />
     </div>

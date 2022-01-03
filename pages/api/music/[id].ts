@@ -7,6 +7,7 @@ interface ResponseData {
     readonly title: string;
     readonly author: string;
     readonly source: string;
+    readonly duration: number;
     readonly id: string;
 }
 
