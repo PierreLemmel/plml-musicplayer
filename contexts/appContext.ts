@@ -4,7 +4,7 @@ import { AudioElementProps, getDefaultElements } from "../services/audio/audio";
 import { MidiProps } from "../services/audio/midi";
 
 export interface AudioElementUpdateProps {
-
+    readonly name: string;
 }
 
 export interface AppContextProps {

@@ -12,8 +12,9 @@ import { HotKeyContext, HotkeysContextProps } from '../contexts/hotkeysContext'
 import Header from '../components/header'
 import { onAuthChanged, updateUserData, useUserData } from '../services/core/firebase'
 import { User } from 'firebase/auth'
-import { AudioElementsMap, ShowDataModel } from '../services/datastore/shows'
+import { AudioElementDataModel, AudioElementsMap, AudioElementsMap as AudioElementsMapDataModel, ShowDataModel } from '../services/datastore/shows'
 import { Timestamp } from 'firebase/firestore'
+import { Mutable } from '../services/core/utils'
 
 const App = ({ Component, pageProps }: AppProps) => {
 
@@ -121,13 +122,14 @@ const App = ({ Component, pageProps }: AppProps) => {
     const hkMapRef = useRef<Map<string, () => void>>(new Map());
 
     const hkContext: HotkeysContextProps = {
-        setHotkey: (key, handler) => hkMapRef.current.set(key, handler)
+        setHotkey: (key, handler) => hkMapRef.current.set(key, handler),
+        unsetHotkey: (key) => hkMapRef.current.delete(key)
     }
 
     useEffect(() => {
 
         const globalKeyDownHandler = e => {
-            const key: string = e.key;
+            const key: string = e.key;console.log(key)
 
             if (hkMapRef.current.has(key)) {
                 const handler = hkMapRef.current.get(key);
@@ -155,7 +157,7 @@ const App = ({ Component, pageProps }: AppProps) => {
                 ...audioElements[idx - 1],
                 ...dm[idx.toString()]
             }
-            console.log(audioElements)
+
             audioElements.splice(idx - 1, 1, newValue);
         });
     }
@@ -169,19 +171,49 @@ const App = ({ Component, pageProps }: AppProps) => {
         }
     }, []);
 
-
-
     // AppContext
     const updateAudioElement = (index: number, data: Partial<AudioElementUpdateProps>) => {
 
-        const updateData: Partial<ShowDataModel> = {
-            modificationTime: Timestamp.now()
+        const elts = audioElementsRef.current;
+        const oldValue = elts[index - 1];
+
+        const newValue: Mutable<AudioElementProps> = {
+            ...oldValue
         }
-        
-        updateUserData<ShowDataModel>("shows/Default", {
-        })
+
+        const { name } = data;
+
+        if (name) {
+            newValue.name = name;
+        }
+
+        elts[index - 1] = newValue;
+        updateDataModel();
     }
 
+    const updateDataModel = () => {
+        const map: AudioElementsMapDataModel = audioElementsRef.current.reduce<Mutable<AudioElementsMap>>((prev, curr) => {
+
+            const { clip, name, index, playProperties } = curr;
+
+            if (clip && name) {
+                const dm: AudioElementDataModel = {
+                    name,
+                    clip,
+                    playProperties
+                }
+
+                prev[index] = dm;
+            }
+
+            return prev;
+        }, {});
+        
+        updateUserData<ShowDataModel>("shows/Default", {
+            modificationTime: Timestamp.now(),
+            elements: map
+        })
+    }
 
     const appContext: AppContextProps = {
         midi,

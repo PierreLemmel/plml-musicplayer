@@ -1,8 +1,9 @@
 import { Grid } from "@mui/material";
-import { useRef, useState } from "react";
+import { DragEvent, useEffect, useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
+import { useHotKeyContext } from "../contexts/hotkeysContext";
 import { AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
-import { formatMinuteSeconds } from "../services/core/utils";
+import { clamp, clamp01, formatMinuteSeconds } from "../services/core/utils";
 import Overlay from "./overlay";
 import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
 
@@ -32,7 +33,7 @@ const ClipsPanel = (props: ClipsPanelProps) => {
     } = useAppContext();
 
     const volumes = [volume1, volume2, volume3, volume4];
-    
+
     return <>
         <Grid container className="w-full">
             {elements
@@ -75,7 +76,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     const audioRef = useRef<HTMLAudioElement>();
     const audio = audioRef.current;
 
-    const [currentTime, setCurrentTime] = useState<number>(0);
+    const [currentTime, setCurrentTime] = useState<number>(playProperties.startTime ?? 0);
     const refreshIntervalRef = useRef<NodeJS.Timeout|null>(null);
 
     const [canPlay, setCanPlay] = useState<boolean>(true);
@@ -91,8 +92,14 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
         audio.volume = volume;
 
+        if (currentTime < startTime) {
+            audio.currentTime = startTime;
+            setCurrentTime(startTime);
+        }
+
+
         if (isOn) {
-            
+                        
             if (canPlay) {
 
                 if (!refreshIntervalRef.current) {
@@ -109,7 +116,6 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
                 if(audio.paused)
                 {
-                    audio.currentTime = Math.max(audio.currentTime, startTime);
                     audio.play();
                 }
 
@@ -132,11 +138,17 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         }
 
         const { duration }  = clip;
+        const onStartTimeChanged = (st: number): void => console.log(st);
+        const onEndTimeChanged = (et: number): void => console.log(et);
+
+        const onCurrentTimeChanged = (ct: number): void => {
+            audio.currentTime = ct;
+            setCurrentTime(ct);
+        };
+
         progressComponent = <AudioPlayProgress
             {...{ progressColorScheme, startTime, endTime, currentTime, duration}}
-            setStartTime={st => console.log(st)}
-            setEndTime={et => console.log(et)}
-            setCurrentTime={ct => console.log(ct)}
+            {...{onStartTimeChanged, onEndTimeChanged, onCurrentTimeChanged}}
         />
     }
 
@@ -169,11 +181,11 @@ interface AudioPlayProgressProps {
     readonly progressColorScheme: PlayProgressColorScheme;
 
     readonly startTime: number;
-    readonly setStartTime: (startTime: number) => void;
+    readonly onStartTimeChanged: (startTime: number) => void;
     readonly endTime: number;
-    readonly setEndTime: (endTime: number) => void;
+    readonly onEndTimeChanged: (endTime: number) => void;
     readonly currentTime: number;
-    readonly setCurrentTime: (currentTime: number) => void;
+    readonly onCurrentTimeChanged: (currentTime: number) => void;
 
     readonly duration: number;
 }
@@ -225,20 +237,62 @@ const PlayProgressOverlay = (props: PlayProgressOverlayProps) => {
     const {
         visible, onExit,
         progressColorScheme: { inactiveColor, playedColor, notPlayedColor, borderColor },
-        startTime, endTime, currentTime, duration
+        startTime, endTime, currentTime, duration,
+        onStartTimeChanged, onEndTimeChanged, onCurrentTimeChanged
     } = props;
+
+    const { setHotkey, unsetHotkey } = useHotKeyContext();
 
     const trackLeft = `${100.0 * startTime / duration}%`;
     const trackRight = `${100.0 * endTime / duration}%`;
     const playedLeft = trackLeft;
     const playedRight = `${100.0 * (duration - currentTime) / duration}%`;
 
+    const railRef = useRef<HTMLDivElement>();
+    const trackRef = useRef<HTMLDivElement>();
+    const playedRef = useRef<HTMLDivElement>();
+    const startTimeHandleRef = useRef<HTMLDivElement>();
+    const endTimeHandleRef = useRef<HTMLDivElement>();
+    const currentTimeHandleRef = useRef<HTMLDivElement>();
+
+    const arrowOffsetSmall = 2;
+    const arrowOffsetBig = 10;
+
+    setHotkey("ArrowLeft", () => onCurrentTimeChanged(clampTime(currentTime - arrowOffsetSmall)));
+    setHotkey("ArrowRight", () => onCurrentTimeChanged(clampTime(currentTime + arrowOffsetSmall)));
+    setHotkey("ArrowDown", () => onCurrentTimeChanged(clampTime(currentTime - arrowOffsetBig)));
+    setHotkey("ArrowUp", () => onCurrentTimeChanged(clampTime(currentTime + arrowOffsetBig)));
+
+    const [currentTimeDragging, setCurrentTimeDragging] = useState<boolean>(false);
+
+    const handlesClasses = `absolute w-[0.6rem]
+        transition transition-color duration-200 rounded-full
+        active:cursor-grabbing active:bg-none
+        hover:cursor-pointer
+    `;
+
+    const clampTime = (time: number) => {
+        return clamp(time, startTime, duration - endTime);
+    }
+
+    const onCurrentTimeDragged = (e: DragEvent<HTMLDivElement>) => {
+
+        const { offsetX, offsetY } = e.nativeEvent;
+
+        if (offsetX < 0 && offsetY < 0) {
+            return;
+        }
+
+        const newTime = clampTime(duration * ((trackRef.current.offsetLeft + playedRef.current.clientWidth + offsetX) / railRef.current.clientWidth));
+        onCurrentTimeChanged(newTime);
+    };
+
     return <Overlay visible={visible}>
         <div
             className="w-full h-full center-child bg-stone-700/80"
             onClick={() => onExit()}
         >
-            <div className="w-1/2 centered-col">
+            <div className="w-1/2 centered-col" ref={railRef} onClick={e => { e.stopPropagation() }} >
                 <div className="w-full -top-6 relative">
                     <div className={`absolute -translate-x-1/2`} style={{left: trackLeft}}>
                         {formatMinuteSeconds(startTime)}
@@ -247,20 +301,42 @@ const PlayProgressOverlay = (props: PlayProgressOverlayProps) => {
                         {formatMinuteSeconds(duration - endTime)}
                     </div>
                 </div>
+
+                {/* Rail */}
                 <div className={`
                     w-full h-10 relative 
                     rounded-xl overflow-hidden
                     border-2 ${borderColor}
                     ${inactiveColor}
-                `}>
+                `} ref={railRef}>
+                    {/* Track */}
                     <div className={`h-full ${notPlayedColor} absolute rounded-md`} style={{
                         left: trackLeft,
                         right: trackRight
-                    }}></div>
+                    }} ref={trackRef}></div>
+
+                    {/* Played */}
                     <div className={`h-full ${playedColor} absolute rounded transition duration-100`} style={{
                         left: playedLeft,
                         right: playedRight
-                    }}></div>
+                    }} ref={playedRef}>
+                        <div ref={currentTimeHandleRef} className={`
+                            ${handlesClasses}
+                            right-0 h-full translate-x-1/2
+                            hover:bg-red-900/80
+                            z-10
+                        `}
+                            onDragStart={e => setCurrentTimeDragging(true)}
+                            onDragEnd={e => setCurrentTimeDragging(false)}
+                            onDragCapture={onCurrentTimeDragged}
+                            draggable={true}
+                        ></div>
+                        <div className={`
+                            ${handlesClasses}
+                            right-0 h-full translate-x-1/2
+                            ${currentTimeDragging ? 'bg-red-900/80' : ''}
+                        `}></div>
+                    </div>
                 </div>
                 <div className="mt-2">{formatMinuteSeconds(currentTime)} / {formatMinuteSeconds(duration)}</div>
             </div>
