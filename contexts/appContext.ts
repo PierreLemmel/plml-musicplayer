@@ -1,10 +1,11 @@
 import { User } from "firebase/auth";
 import { createContext, useContext } from "react";
-import { AudioElementProps, getDefaultElements } from "../services/audio/audio";
+import { AudioElementProps, getDefaultElements, PlayProperties } from "../services/audio/audio";
 import { MidiProps } from "../services/audio/midi";
 
 export interface AudioElementUpdateProps {
-    readonly name: string;
+    readonly name?: string;
+    readonly playProperties?: Partial<PlayProperties>;
 }
 
 export interface AppContextProps {

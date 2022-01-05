@@ -33,6 +33,10 @@ export const roseEmeraldScheme: ComponentColorScheme = {
     onOutline: "outline-emerald-500"
 }
 
+export interface HandleColor {
+    readonly normal: string;
+    readonly hover: string;
+}
 
 export interface PlayProgressColorScheme {
     readonly inactiveColor: string;
@@ -40,6 +44,9 @@ export interface PlayProgressColorScheme {
     readonly playedColor: string;
 
     readonly borderColor: string;
+
+    readonly currentTimeHandleColor: HandleColor;
+    readonly playableTimeHandleColor: HandleColor
 }
 
 export const defaultPlayProgressColorScheme: PlayProgressColorScheme = {
@@ -47,5 +54,14 @@ export const defaultPlayProgressColorScheme: PlayProgressColorScheme = {
     notPlayedColor: "bg-stone-600",
     playedColor: "bg-stone-300",
 
-    borderColor: "border-stone-500"
+    borderColor: "border-stone-500",
+
+    currentTimeHandleColor: { 
+        normal: "bg-red-900/80",
+        hover: "hover:bg-red-900/80"
+    },
+    playableTimeHandleColor:  { 
+        normal: "bg-green-900/80",
+        hover: "hover:bg-green-900/80"
+    }
 }

@@ -129,7 +129,7 @@ const App = ({ Component, pageProps }: AppProps) => {
     useEffect(() => {
 
         const globalKeyDownHandler = e => {
-            const key: string = e.key;console.log(key)
+            const key: string = e.key;
 
             if (hkMapRef.current.has(key)) {
                 const handler = hkMapRef.current.get(key);
@@ -181,10 +181,17 @@ const App = ({ Component, pageProps }: AppProps) => {
             ...oldValue
         }
 
-        const { name } = data;
+        const { name, playProperties } = data;
 
         if (name) {
             newValue.name = name;
+        }
+
+        if (playProperties) {
+            newValue.playProperties = {
+                ...newValue.playProperties,
+                ...playProperties
+            };
         }
 
         elts[index - 1] = newValue;
