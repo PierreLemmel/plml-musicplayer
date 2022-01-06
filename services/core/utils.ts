@@ -1,4 +1,4 @@
-export const delay = ms => new Promise(resolve => setTimeout(resolve, ms))
+export const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
 export function randomInt(max: number) {
     return Math.floor(Math.random() * max);

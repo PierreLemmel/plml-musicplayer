@@ -4,6 +4,7 @@
 /* purgecss end ignore */
 @tailwind utilities;
 
+
 .center-child {
     @apply flex flex-row items-center justify-center
 }

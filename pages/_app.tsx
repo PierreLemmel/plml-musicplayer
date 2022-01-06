@@ -14,7 +14,10 @@ import { onAuthChanged, updateUserData, useUserData } from '../services/core/fir
 import { User } from 'firebase/auth'
 import { AudioElementDataModel, AudioElementsMap, AudioElementsMap as AudioElementsMapDataModel, ShowDataModel } from '../services/datastore/shows'
 import { Timestamp } from 'firebase/firestore'
-import { Mutable } from '../services/core/utils'
+import { delay, Mutable } from '../services/core/utils'
+import { FetchEvent } from 'next/dist/server/web/spec-compliant/fetch-event'
+import { extractYoutubeId } from '../services/audio/youtube'
+import { PostMusicResponse } from './api/music/apimodels'
 
 const App = ({ Component, pageProps }: AppProps) => {
 
@@ -198,6 +201,35 @@ const App = ({ Component, pageProps }: AppProps) => {
         updateDataModel();
     }
 
+    const loadClip = async (index: number, idOrUrl: string) => {
+
+        const id = extractYoutubeId(idOrUrl);
+        
+        console.info(`Loading clip for Id: '${id}'`);
+        const request: RequestInit = {
+            method: 'POST'
+        }
+
+        const response = await fetch(`/api/music/${id}`, request);
+        const content: PostMusicResponse = await response.json();
+
+        const elts = audioElementsRef.current;
+        const oldValue = elts[index - 1];
+
+        const newValue: AudioElementProps = {
+            ...oldValue,
+
+            name: oldValue.name ? oldValue.name : content.title,
+            clip: {
+                ...content
+            },
+            playProperties: { }
+        }
+
+        elts[index - 1] = newValue;
+        updateDataModel();
+    }
+
     const updateDataModel = () => {
         const map: AudioElementsMapDataModel = audioElementsRef.current.reduce<Mutable<AudioElementsMap>>((prev, curr) => {
 
@@ -234,7 +266,8 @@ const App = ({ Component, pageProps }: AppProps) => {
             volume4: volumes[3],
         },
         appReady: userInterractedWithPage,
-        updateAudioElement
+        updateAudioElement,
+        loadClip
     };
 
     return <ThemeProvider theme={muiTheme}>

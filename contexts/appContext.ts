@@ -22,6 +22,8 @@ export interface AppContextProps {
     readonly appReady: boolean;
 
     readonly updateAudioElement: (index: number, data: Partial<AudioElementUpdateProps>) => void;
+
+    readonly loadClip: (index: number, idOrUrl: string) => Promise<void>;
 }
 
 
@@ -37,7 +39,8 @@ export const AppContext = createContext<AppContextProps>({
         volume4: 100.0
     },
     appReady: false,
-    updateAudioElement: (index: number, data: Partial<AudioElementUpdateProps>) => {}
+    updateAudioElement: (index: number, data: Partial<AudioElementUpdateProps>) => { },
+    loadClip: async (index: number, idOrUrl: string) => { }
 });
 
 export const useAppContext = () => {

@@ -1,11 +1,11 @@
-import { duration, Grid } from "@mui/material";
-import { DragEvent, useEffect, useRef, useState } from "react";
+import { Grid } from "@mui/material";
+import EditIcon from '@mui/icons-material/Edit';
+import { useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
-import { useHotKeyContext } from "../contexts/hotkeysContext";
 import { AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
-import { clamp, clamp01, formatMinuteSeconds } from "../services/core/utils";
-import Overlay from "./overlay";
 import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
+import { ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps } from "./clipEdit";
+import { isValidYoutubeIdOrUrl } from "../services/audio/youtube";
 
 interface ClipsPanelProps {
     readonly elements: AudioElementProps[];
@@ -73,7 +73,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         volume
     } = props;
 
-    const { updateAudioElement } = useAppContext();
+    const { updateAudioElement, loadClip } = useAppContext();
 
     const audioRef = useRef<HTMLAudioElement>();
     const audio = audioRef.current;
@@ -86,6 +86,9 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     const [startTimeDisplay, setStartTimeDisplay] = useState<number>(startTimeProp);
     const [endTimeDisplay, setEndTimeDisplay] = useState<number>(endTimeProp);
     const [currentTimeDisplay, setCurrentTimeDisplay] = useState<number>(startTimeProp);
+
+    const [edit, setEdit] = useState<boolean>(false);
+    const [hovered, setHovered] = useState<boolean>(false);
 
     const editCurrentTimeRef = useRef<boolean>(false);
     const editStartTimeRef = useRef<boolean>(false);
@@ -104,7 +107,9 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         setEndTimeDisplay(endTimeProp);
     }
 
-    
+
+    let audioPlayProps: AudioPlayProgressProps = undefined;
+    let editProgressProps: PlayProgressEditProps = undefined;
 
     if (clip && audio) {
 
@@ -197,16 +202,46 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
             setCurrentTimeDisplay(ct);
             audio.currentTime = ct;
         }
-        progressComponent = <AudioPlayProgress
-            {...{ 
-                progressColorScheme, duration,
-                startTime: startTimeDisplay, endTime: endTimeDisplay, currentTime: currentTimeDisplay,
-                onStartTimeStartEditing, onStartTimeChanged, onStartTimeCommitted,
-                onEndTimeStartEditing, onEndTimeChanged, onEndTimeCommitted,
-                onCurrentTimeStartEditing, onCurrentTimeChanged, onCurrentTimeCommitted, setCurrentTime
-            }}
-        />
+
+        audioPlayProps = { 
+            progressColorScheme, duration,
+            startTime: startTimeDisplay, endTime: endTimeDisplay, currentTime: currentTimeDisplay,  
+        };
+
+        editProgressProps = {
+            onStartTimeStartEditing, onStartTimeChanged, onStartTimeCommitted,
+            onEndTimeStartEditing, onEndTimeChanged, onEndTimeCommitted,
+            onCurrentTimeStartEditing, onCurrentTimeChanged, onCurrentTimeCommitted, setCurrentTime
+        };
+
+        progressComponent = <AudioPlayProgress {...audioPlayProps} />
     }
+
+    const onClipEditFormSubmitted = async (data: ClipEditData) => {
+        
+        const { idOrUrl } = data;
+        updateAudioElement(index, {
+            name: data.name
+        });
+
+        if (isValidYoutubeIdOrUrl(idOrUrl) && idOrUrl !== clip?.id) {
+            await loadClip(index, idOrUrl);
+        }
+    };
+
+    const clipEditFormProps: ClipEditFormProps = {
+        data: {
+            name: clipName,
+            idOrUrl: clip?.id ?? ""
+        },
+        onClipEditFormSubmitted
+    }
+
+
+    const progressEdit = (editProgressProps && audioPlayProps) ? {
+        ...editProgressProps,
+        ...audioPlayProps
+    } : undefined;
 
     return <>
         {visible && <div className="m-2 flex flex-col pt-1 pl-1">
@@ -214,7 +249,11 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
                 rounded-lg text-white text-center flex flex-col justify-center items-center
                 outline outline-3 p-4 italic
                 h-28 sm:h-32 md:h-40 lg:h-52 xl:h-48 2xl:h-44
-                transition-colors relative`}
+                max-h-[25vh]
+                transition-colors relative
+                hover:cursor-pointer`} onClick={() => setEdit(true)}
+                onMouseEnter={() => setHovered(true)}
+                onMouseLeave={() => setHovered(false)}
             >
                 {
                     clip ? 
@@ -224,34 +263,32 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
                     </> :
                     <div>-</div>
                 }
+                <div className={`absolute w-full h-full rounded-lg
+                    center-child
+                    transition-opacity duration-500
+                    bg-gray-500/60
+                    ${hovered ? 'opacity-100' : 'opacity-0'}`}
+                >
+                    <EditIcon className="w-1/3 h-1/3"/>
+                </div>
             </div>
             {showPadTexts && <div className="mt-2 text-xs pl-2">PAD {(index - 1) % 16 + 1}</div>}
         </div>}
         {clip && <audio ref={audioRef} src={clip.url} />}
-        
+        {edit && <ClipEditOverlay
+            visible={edit} onExit={() => setEdit(false)}
+            clipEdit={clipEditFormProps}
+            progressEdit={progressEdit}
+        />}
     </>
 }
 
 
-interface AudioPlayProgressProps {
+export interface AudioPlayProgressProps {
     readonly progressColorScheme: PlayProgressColorScheme;
-
     readonly startTime: number;
-    readonly onStartTimeStartEditing: () => void;
-    readonly onStartTimeChanged: (startTime: number) => void;
-    readonly onStartTimeCommitted: () => void;
-
     readonly endTime: number;
-    readonly onEndTimeStartEditing: () => void;
-    readonly onEndTimeChanged: (endTime: number) => void;
-    readonly onEndTimeCommitted: () => void;
-
     readonly currentTime: number;
-    readonly onCurrentTimeStartEditing: () => void;
-    readonly onCurrentTimeChanged: (currentTime: number) => void;
-    readonly onCurrentTimeCommitted: () => void;
-    readonly setCurrentTime: (currentTime: number) => void;
-
     readonly duration: number;
 }
 
@@ -261,8 +298,6 @@ const AudioPlayProgress = (props: AudioPlayProgressProps) => {
         progressColorScheme: { inactiveColor, playedColor, notPlayedColor },
         startTime, endTime, currentTime, duration
     } = props;
-
-    const [overlay, setOverlay] = useState<boolean>(false);
 
     const trackLeft = `${100.0 * startTime / duration}%`;
     const trackRight = `${100.0 * endTime / duration}%`;
@@ -274,9 +309,8 @@ const AudioPlayProgress = (props: AudioPlayProgressProps) => {
             w-full h-[0.8em] absolute bottom-0
             rounded-t rounded-b-lg overflow-hidden
             ${inactiveColor}
-            transition-transform duration-300
-            hover:scale-110 hover:cursor-pointer`
-        } onClick={() => setOverlay(true)}>
+            transition-transform duration-300`
+        }>
             <div className={`h-full ${notPlayedColor} absolute`} style={{
                 left: trackLeft,
                 right: trackRight
@@ -286,253 +320,9 @@ const AudioPlayProgress = (props: AudioPlayProgressProps) => {
                 right: playedRight
             }}></div>
         </div>
-        <PlayProgressOverlay visible={overlay} onExit={() => setOverlay(false)} {...props}/>
     </>
 }
 
 
-interface PlayProgressOverlayProps extends AudioPlayProgressProps {
-
-    readonly visible: boolean;
-    readonly onExit: () => void;
-}
-
-const PlayProgressOverlay = (props: PlayProgressOverlayProps) => {
-
-    const {
-        visible, onExit,
-        progressColorScheme: {
-            inactiveColor, playedColor, notPlayedColor, borderColor,
-            currentTimeHandleColor: {
-                normal: currentTimeHandleColor,
-                hover:  currentTimeHandleHoverColor
-            },
-            playableTimeHandleColor: {
-                normal: playableTimeHandleColor,
-                hover:  playableTimeHandleHoverColor
-            }
-        },
-        startTime, endTime, currentTime, duration,
-        onStartTimeStartEditing, onStartTimeChanged, onStartTimeCommitted,
-        onEndTimeStartEditing, onEndTimeChanged, onEndTimeCommitted,
-        onCurrentTimeStartEditing, onCurrentTimeChanged, onCurrentTimeCommitted, setCurrentTime
-    } = props;
-
-    const { setHotkey } = useHotKeyContext();
-
-    const trackLeft = `${100.0 * startTime / duration}%`;
-    const trackRight = `${100.0 * endTime / duration}%`;
-    const playedLeft = trackLeft;
-    const playedRight = `${100.0 * Math.max(duration - currentTime, endTime) / duration}%`;
-
-    const railRef = useRef<HTMLDivElement>();
-    const trackRef = useRef<HTMLDivElement>();
-    const playedRef = useRef<HTMLDivElement>();
-    const startTimeHandleRef = useRef<HTMLDivElement>();
-    const endTimeHandleRef = useRef<HTMLDivElement>();
-    const currentTimeHandleRef = useRef<HTMLDivElement>();
-
-    const arrowOffsetSmall = 2;
-    const arrowOffsetBig = 10;
-
-    setHotkey("ArrowLeft", () => onCurrentTimeChanged(clampTime(currentTime - arrowOffsetSmall)));
-    setHotkey("ArrowRight", () => onCurrentTimeChanged(clampTime(currentTime + arrowOffsetSmall)));
-    setHotkey("ArrowDown", () => onCurrentTimeChanged(clampTime(currentTime - arrowOffsetBig)));
-    setHotkey("ArrowUp", () => onCurrentTimeChanged(clampTime(currentTime + arrowOffsetBig)));
-
-    const [currentTimeDragging, setCurrentTimeDragging] = useState<boolean>(false);
-    const [startTimeDragging, setStartTimeDragging] = useState<boolean>(false);
-    const [endTimeDragging, setEndTimeDragging] = useState<boolean>(false);
-
-    const closeThreshold = 3.0;
-    const timeCloseToStart = currentTime - startTime < closeThreshold;
-    const timeCloseToEnd = duration- endTime - currentTime < closeThreshold;
-
-    const translateStartHandleClass = timeCloseToStart ? "-translate-x-3/4" : "-translate-x-1/2";
-    const translateEndHandleClass = timeCloseToEnd ? "translate-x-3/4" : "translate-x-1/2";
-    const translateCurrentHandleClass = timeCloseToStart ?
-        "translate-x-3/4" :
-        timeCloseToEnd ? 
-            "translate-x-1/4" :
-            "translate-x-1/2";
-
-    const handlesClasses = `absolute w-[0.6rem]
-        h-full
-        transition transition-color duration-200 rounded-full
-        active:cursor-grabbing active:bg-none
-        hover:cursor-pointer
-    `;
-
-    const clampTime = (time: number) => {
-        return clamp(time, startTime, duration - endTime);
-    }
-    
-    const onCurrentTimeDragged = (e: DragEvent<HTMLDivElement>) => {
-        
-        const { offsetX, offsetY } = e.nativeEvent;
-        
-        if (offsetX < 0 && offsetY < 0) {
-            return;
-        }
-        
-        const newTime = clampTime(duration * ((trackRef.current.offsetLeft + playedRef.current.clientWidth + offsetX) / railRef.current.clientWidth));
-        onCurrentTimeChanged(newTime);
-    };
-    
-    const minDuration = 0.05 * duration;
-
-    const onStartTimeDragged = (e: DragEvent<HTMLDivElement>) => {
-        const { offsetX, offsetY } = e.nativeEvent;
-
-        if (offsetX < 0 && offsetY < 0) {
-            return;
-        }
-
-        const newTime = clamp(
-            duration * (trackRef.current.offsetLeft + offsetX) / railRef.current.clientWidth,
-            0.0,
-            duration - endTime - minDuration
-        );
-        onStartTimeChanged(newTime);
-    };
-
-    const onEndTimeDragged = (e: DragEvent<HTMLDivElement>) => {
-
-        const { offsetX, offsetY } = e.nativeEvent;
-
-        if (offsetX < 0 && offsetY < 0) {
-            return;
-        }
-
-        const newTime = clamp(
-            duration * (railRef.current.clientWidth - (trackRef.current.offsetLeft + trackRef.current.clientWidth + offsetX)) / railRef.current.clientWidth,
-            0,
-            duration - startTime - minDuration
-        );
-        onEndTimeChanged(newTime);
-    };
-
-    const onClickOnTrack = (e: React.PointerEvent<HTMLDivElement>) => {
-        
-        const { offsetX } = e.nativeEvent;
-
-        const newTime = clampTime(duration * ((trackRef.current.offsetLeft + offsetX) / railRef.current.clientWidth));
-        setCurrentTime(newTime);
-    }
-
-    return <Overlay visible={visible}>
-        <div
-            className="w-full h-full center-child bg-stone-700/80"
-            onClick={() => onExit()}
-        >
-            <div className="w-1/2 centered-col" ref={railRef} onClick={e => { e.stopPropagation() }} >
-                <div className="w-full -top-6 relative">
-                    <div className={`absolute -translate-x-1/2`} style={{left: trackLeft}}>
-                        {formatMinuteSeconds(startTime)}
-                    </div>
-                    <div className={`absolute translate-x-1/2`} style={{right: trackRight}}>
-                        {formatMinuteSeconds(duration - endTime)}
-                    </div>
-                </div>
-
-                {/* Rail */}
-                <div className={`
-                    w-full h-10 relative 
-                    rounded-xl overflow-hidden
-                    border-2 ${borderColor}
-                    ${inactiveColor}
-                `} ref={railRef}>
-                    {/* Track */}
-                    <div className={`h-full ${notPlayedColor} absolute rounded-md`} style={{
-                        left: trackLeft,
-                        right: trackRight
-                    }} ref={trackRef}>
-
-                        {/* Start time */}
-                        <div ref={startTimeHandleRef} className={`
-                            ${handlesClasses}
-                            left-0 ${translateStartHandleClass}
-                            ${playableTimeHandleHoverColor}
-                            z-30
-                        `}
-                            onDragStart={e => {
-                                onStartTimeStartEditing();
-                                setStartTimeDragging(true);
-                            }}
-                            onDragEnd={e => {
-                                setStartTimeDragging(false);
-                                onStartTimeCommitted();
-                            }}
-                            onDragCapture={onStartTimeDragged}
-                            draggable={true}
-                        ></div>
-                        <div className={`
-                            ${handlesClasses}
-                            left-0 ${translateStartHandleClass}
-                            ${startTimeDragging ? playableTimeHandleColor : ''}
-                        `}></div>
-
-                        {/* End time */}
-                        <div ref={endTimeHandleRef} className={`
-                            ${handlesClasses}
-                            right-0 ${translateEndHandleClass}
-                            ${playableTimeHandleHoverColor}
-                            z-40
-                        `}
-                            onDragStart={e => {
-                                onEndTimeStartEditing();
-                                setEndTimeDragging(true);
-                            }}
-                            onDragEnd={e => {
-                                setEndTimeDragging(false);
-                                onEndTimeCommitted();
-                            }}
-                            onDragCapture={onEndTimeDragged}
-                            draggable={true}
-                        ></div>
-                        <div className={`
-                            ${handlesClasses}
-                            right-0 ${translateEndHandleClass}
-                            ${endTimeDragging ? playableTimeHandleColor : ''}
-                        `}></div>
-
-                        {/* Clickable track */}
-                        <div className="hover:cursor-pointer z-50 h-full w-full absolute bg-none" onClick={onClickOnTrack}></div>
-                    </div>
-
-                    {/* Played */}
-                    <div className={`h-full ${playedColor} absolute rounded transition duration-100`} style={{
-                        left: playedLeft,
-                        right: playedRight
-                    }} ref={playedRef}>
-                        <div ref={currentTimeHandleRef} className={`
-                            ${handlesClasses}
-                            right-0 ${translateCurrentHandleClass}
-                            ${currentTimeHandleHoverColor}
-                            z-50
-                        `}
-                            onDragStart={e => {
-                                onCurrentTimeStartEditing();
-                                setCurrentTimeDragging(true);
-                            }}
-                            onDragEnd={e => {
-                                setCurrentTimeDragging(false);
-                                onCurrentTimeCommitted();
-                            }}
-                            onDragCapture={onCurrentTimeDragged}
-                            draggable={true}
-                        ></div>
-                        <div className={`
-                            ${handlesClasses}
-                            right-0 ${translateCurrentHandleClass}
-                            ${currentTimeDragging ? currentTimeHandleColor : ''}
-                        `}></div>
-                    </div>
-                </div>
-                <div className="mt-2">{formatMinuteSeconds(currentTime)} / {formatMinuteSeconds(duration)}</div>
-            </div>
-        </div>
-    </Overlay>
-}
 
 export default ClipsPanel;

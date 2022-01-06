@@ -1,19 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { cacheMusic, tryGetFromCache } from '../../../services/audio/youtube'
-
-
-interface ResponseData {
-    readonly url: string;
-    readonly title: string;
-    readonly author: string;
-    readonly source: string;
-    readonly duration: number;
-    readonly id: string;
-}
+import { cacheMusic, tryGetFromCache } from '../../../services/audio/youtubeApi'
+import { PostMusicResponse } from './apimodels';
 
 export default async function handler(
     req: NextApiRequest,
-    res: NextApiResponse<ResponseData|string>
+    res: NextApiResponse<PostMusicResponse|string>
 ) {
     if (req.method === "POST" || process.env.DEV) {
         const id = <string> req.query["id"];

@@ -65,8 +65,8 @@ const ShowPage = () => {
         }
     ]
 
-    return <div className="px-3 centered-row">
-        <div className="w-full lg:w-1/2 centered-col">
+    return <div className="px-3 flex flex-wrap flew-row items-center justify-between">
+        <div className="w-full lg:w-7/12 centered-col">
             <div>
                 {range(4).map(i => <ClipsPanel
                     key={`clip-panel-${i}`}
@@ -77,7 +77,7 @@ const ShowPage = () => {
             <Pagination count={4} page={pageIndex} onChange={(e, val) => setPageIndex(val)} className="mt-2 mb-3" />
         </div>
         <div className={`
-            w-full min-h-[50vh] h-full lg:w-1/2 ml-6
+            w-full min-h-[50vh] h-full lg:w-1/3 ml-6
             center-child
         `}>
             <ControlPanel {...colorSchemes[pageIndex - 1]}/>
@@ -87,9 +87,11 @@ const ShowPage = () => {
 }
 
 const AppReadyWarning = (props: { visible: boolean}) => <Overlay visible={props.visible}>
-    <div className="w-full h-full centered-col bg-stone-700/90">
-        <div className="text-8xl">Click on screen to enable app.</div>
-        <div className="text-2xl mt-6">Websites don't allow us to play audio if user didn't interract first with the page.</div>
+    <div className="center-child w-full h-full bg-slate-700/90">
+        <div className="w-3/4 centered-col text-center">
+            <div className="text-8xl">Click on screen to enable app.</div>
+            <div className="text-2xl mt-6">Websites don't allow us to play audio if user didn't interract first with the page.</div>
+        </div>
     </div>
 </Overlay>
 
