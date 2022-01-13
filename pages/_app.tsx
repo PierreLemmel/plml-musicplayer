@@ -230,6 +230,22 @@ const App = ({ Component, pageProps }: AppProps) => {
         updateDataModel();
     }
 
+    const clearClip = async (index: number) => {
+        const elts = audioElementsRef.current;
+
+        const oldValue = elts[index - 1];
+
+        const newValue: AudioElementProps = {
+            ...oldValue,
+
+            clip: undefined,
+            playProperties: { }
+        }
+
+        elts[index - 1] = newValue;
+        updateDataModel();
+    }
+
     const updateDataModel = () => {
         const map: AudioElementsMapDataModel = audioElementsRef.current.reduce<Mutable<AudioElementsMap>>((prev, curr) => {
 
@@ -267,7 +283,8 @@ const App = ({ Component, pageProps }: AppProps) => {
         },
         appReady: userInterractedWithPage,
         updateAudioElement,
-        loadClip
+        loadClip,
+        clearClip
     };
 
     return <ThemeProvider theme={muiTheme}>

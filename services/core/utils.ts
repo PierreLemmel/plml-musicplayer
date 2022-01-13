@@ -27,3 +27,7 @@ export function range(length: number) {
 export type Mutable<T> = {
     -readonly [P in keyof T]: T[P];
 }
+
+export function ifTrue(value: boolean, str: string): string {
+    return value ? str : "";
+}

@@ -1,11 +1,15 @@
 import { Grid } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SettingsOverscanIcon from '@mui/icons-material/SettingsOverscan';
+import ReplayIcon from '@mui/icons-material/Replay';
 import { useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
 import { AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
 import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
 import { ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps } from "./clipEdit";
 import { isValidYoutubeIdOrUrl } from "../services/audio/youtube";
+import { ifTrue } from "../services/core/utils";
 
 interface ClipsPanelProps {
     readonly elements: AudioElementProps[];
@@ -73,10 +77,11 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         volume
     } = props;
 
-    const { updateAudioElement, loadClip } = useAppContext();
+    const { updateAudioElement, loadClip, clearClip } = useAppContext();
 
     const audioRef = useRef<HTMLAudioElement>();
     const audio = audioRef.current;
+    
 
     const { startTime: startTimeProp, endTime: endTimeProp } = {
         ...defaultPlayProperties,
@@ -111,15 +116,27 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     let audioPlayProps: AudioPlayProgressProps = undefined;
     let editProgressProps: PlayProgressEditProps = undefined;
 
+    let resetClip: undefined|(() => void);
+    let deleteClip: undefined|(() => void);
+    let dragClip: undefined|(() => void);
+
     if (clip && audio) {
 
         audio.volume = volume;
         const { duration }  = clip;
 
-        // Rounding precesion can cause some weird bug where audio.currentTime is rounded down and is still lower than startTimeProps
-        if (audio.currentTime < (startTimeProp - 0.01)) {
+        resetClip = () => {
             audio.currentTime = startTimeProp;
             setCurrentTimeDisplay(startTimeProp);
+        };
+
+        deleteClip = () => {
+            clearClip(index);
+        }
+
+        // Rounding precision can cause some weird bug where audio.currentTime is rounded down and is still lower than startTimeProps
+        if (audio.currentTime < (startTimeProp - 0.01)) {
+            resetClip();
         }
 
         if (duration - audio.currentTime < endTimeProp) {
@@ -168,6 +185,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
             audio.pause();
         }
+
 
         const onStartTimeStartEditing = () => editStartTimeRef.current = true;
         const onStartTimeChanged = (st: number) => setStartTimeDisplay(st);
@@ -250,8 +268,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
                 outline outline-3 p-4 italic
                 h-28 sm:h-32 md:h-40 lg:h-52 xl:h-48 2xl:h-44
                 max-h-[25vh]
-                transition-colors relative
-                hover:cursor-pointer`} onClick={() => setEdit(true)}
+                transition-colors relative`}
                 onMouseEnter={() => setHovered(true)}
                 onMouseLeave={() => setHovered(false)}
             >
@@ -264,17 +281,28 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
                     <div>-</div>
                 }
                 <div className={`absolute w-full h-full rounded-lg
-                    center-child
                     transition-opacity duration-500
                     bg-gray-500/60
+                    grid grid-cols-2 grid-rows-2
                     ${hovered ? 'opacity-100' : 'opacity-0'}`}
                 >
-                    <EditIcon className="w-1/3 h-1/3"/>
+                    <AudioCellDisplayButton onClick={() => setEdit(true)}>
+                        <EditIcon className="w-full h-full" />
+                    </AudioCellDisplayButton>
+                    <AudioCellDisplayButton onClick={deleteClip} disabled={isOn}>
+                        <DeleteIcon className="w-full h-full" />
+                    </AudioCellDisplayButton>
+                    <AudioCellDisplayButton onClick={resetClip}>
+                        <ReplayIcon className="w-full h-full" />
+                    </AudioCellDisplayButton>
+                    <AudioCellDisplayButton onClick={dragClip}>
+                        <SettingsOverscanIcon className="w-full h-full" />
+                    </AudioCellDisplayButton>
                 </div>
             </div>
             {showPadTexts && <div className="mt-2 text-xs pl-2">PAD {(index - 1) % 16 + 1}</div>}
         </div>}
-        {clip && <audio ref={audioRef} src={clip.url} />}
+        {clip && <audio ref={audioRef} src={clip.url} onLoad={e => console.log(e)} />}
         {edit && <ClipEditOverlay
             visible={edit} onExit={() => setEdit(false)}
             clipEdit={clipEditFormProps}
@@ -283,6 +311,39 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     </>
 }
 
+interface AudioCellDisplayButtonProps {
+    readonly children: JSX.Element;
+    readonly onClick?: () => void;
+    readonly disabled?: boolean;
+}
+
+const AudioCellDisplayButton = (props: AudioCellDisplayButtonProps) => {
+
+    const { children, onClick, disabled } = props;
+
+    const [hovered, setHovered] = useState<boolean>(false);
+
+    const enabled = onClick !== undefined && !(disabled ?? false);
+
+    return <div className={`center-child
+        ${ifTrue(hovered && enabled, 'bg-white/20')}
+        transition-color duration-300
+        ${ifTrue(enabled, 'hover:cursor-pointer')}
+        rounded-xl m-1
+    `}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        onClick={onClick}
+    >
+        <div className={`w-2/3 h-2/3
+            duration-300
+            transition-opacity
+            ${enabled ? (hovered ? 'opacity-100' : 'opacity-50') : 'opacity-10'}
+        `}>
+            {children}
+        </div>
+    </div>;
+}
 
 export interface AudioPlayProgressProps {
     readonly progressColorScheme: PlayProgressColorScheme;
