@@ -1,22 +1,34 @@
 import { initializeApp } from "firebase/app";
-import { getStorage } from "firebase/storage";
-import { getFirestore, doc, FirestoreError, updateDoc, collection, DocumentData } from 'firebase/firestore';
+import { getBytes, getStorage, ref } from "firebase/storage";
+import { getFirestore, doc, updateDoc, DocumentData } from 'firebase/firestore';
 import { Auth, getAuth, signInWithPopup, GoogleAuthProvider, signOut, User } from "firebase/auth";
 import { useAuthState } from 'react-firebase-hooks/auth';
 import { useDocumentData } from "react-firebase-hooks/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCyLvFF8rAZUdqrUnupHTnIaKXtYfb31GM",
-  authDomain: "plml-musicplayer.firebaseapp.com",
-  projectId: "plml-musicplayer",
-  storageBucket: "plml-musicplayer.appspot.com",
-  messagingSenderId: "722344346320",
-  appId: "1:722344346320:web:221c6c17eef8e2705554d5"
+    apiKey: "AIzaSyCyLvFF8rAZUdqrUnupHTnIaKXtYfb31GM",
+    authDomain: "plml-musicplayer.firebaseapp.com",
+    projectId: "plml-musicplayer",
+    storageBucket: "plml-musicplayer.appspot.com",
+    messagingSenderId: "722344346320",
+    appId: "1:722344346320:web:221c6c17eef8e2705554d5"
 };
 
 const app = initializeApp(firebaseConfig);
 
-export const getFileStorage = () => getStorage(app);
+const storage = getStorage(app);
+
+export const getFileStorage = () => {
+    return storage;
+}
+
+export const getMusicFile = async (musicId: string) => {
+    const musicRef = ref(storage, `music/${musicId}`);
+    const bytes = await getBytes(musicRef);
+
+    return bytes;
+}
+
 
 const auth: Auth = getAuth(app);
 

@@ -1,15 +1,17 @@
-import { Grid } from "@mui/material";
+import { CircularProgress, Grid } from "@mui/material";
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SettingsOverscanIcon from '@mui/icons-material/SettingsOverscan';
 import ReplayIcon from '@mui/icons-material/Replay';
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
 import { AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
 import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
 import { ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps } from "./clipEdit";
 import { isValidYoutubeIdOrUrl } from "../services/audio/youtube";
 import { ifTrue } from "../services/core/utils";
+import { getMusicFile } from "../services/core/firebase";
+import { useAudioContext } from "../contexts/audioContext";
 
 interface ClipsPanelProps {
     readonly elements: AudioElementProps[];
@@ -78,10 +80,13 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     } = props;
 
     const { updateAudioElement, loadClip, clearClip } = useAppContext();
+    const { decodeAudioData } = useAudioContext();
 
     const audioRef = useRef<HTMLAudioElement>();
     const audio = audioRef.current;
     
+    const [audioData, setAudioData] = useState<AudioBuffer|null>(null);
+
 
     const { startTime: startTimeProp, endTime: endTimeProp } = {
         ...defaultPlayProperties,
@@ -95,12 +100,52 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     const [edit, setEdit] = useState<boolean>(false);
     const [hovered, setHovered] = useState<boolean>(false);
 
+
+    const [loading, setLoading] = useState<boolean>(false);
+    const [loaded, setLoaded] = useState<boolean>(false);
+
     const editCurrentTimeRef = useRef<boolean>(false);
     const editStartTimeRef = useRef<boolean>(false);
     const editEndTimeRef = useRef<boolean>(false);
     const refreshIntervalRef = useRef<NodeJS.Timeout|null>(null);
 
     const [canPlay, setCanPlay] = useState<boolean>(true);
+
+    useEffect(() => {
+
+        const capturedId = clip?.id;
+
+        if (loaded || !capturedId) {
+            return;
+        }
+
+        setLoading(true);
+        console.info(`Setting up clip '${capturedId}'`);
+
+        let srcUrl: string|undefined;
+        getMusicFile(capturedId).then(rawData =>{
+            
+            const blob = new Blob([rawData], { type: "audio/mpeg3" });
+            srcUrl = window.URL.createObjectURL(blob);
+            audioRef.current.src = srcUrl;
+
+            decodeAudioData(rawData, audioData =>{
+                setAudioData(audioData);
+                setLoaded(true);
+                setLoading(false);
+
+                console.info(`Setup done for clip '${capturedId}'`);
+            });
+        });
+
+        return () => {
+            if (srcUrl) {
+                console.info(`Cleaning up resources for clip '${capturedId}'`);
+                window.URL.revokeObjectURL(srcUrl);
+            }
+        }
+
+    }, [clip?.id]);
 
     let progressComponent = undefined;
 
@@ -132,6 +177,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
         deleteClip = () => {
             clearClip(index);
+            setLoaded(false);
         }
 
         // Rounding precision can cause some weird bug where audio.currentTime is rounded down and is still lower than startTimeProps
@@ -273,12 +319,17 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
                 onMouseLeave={() => setHovered(false)}
             >
                 {
-                    clip ? 
-                    <>
-                        <div className="xl:text-xl">{clipName}</div>
-                        {progressComponent}
-                    </> :
-                    <div>-</div>
+                    (!loading) ?
+                        (clip ? 
+                        <>
+                            <div className="xl:text-xl">{clipName}</div>
+                            {progressComponent}
+                        </> :
+                        <div>-</div>)
+                    :
+                    <div>
+                        <CircularProgress />
+                    </div>
                 }
                 <div className={`absolute w-full h-full rounded-lg
                     transition-opacity duration-500
@@ -302,7 +353,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
             </div>
             {showPadTexts && <div className="mt-2 text-xs pl-2">PAD {(index - 1) % 16 + 1}</div>}
         </div>}
-        {clip && <audio ref={audioRef} src={clip.url} onLoad={e => console.log(e)} />}
+        {clip && <audio ref={audioRef} />}
         {edit && <ClipEditOverlay
             visible={edit} onExit={() => setEdit(false)}
             clipEdit={clipEditFormProps}
@@ -383,7 +434,5 @@ const AudioPlayProgress = (props: AudioPlayProgressProps) => {
         </div>
     </>
 }
-
-
 
 export default ClipsPanel;

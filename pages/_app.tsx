@@ -18,6 +18,7 @@ import { delay, Mutable } from '../services/core/utils'
 import { FetchEvent } from 'next/dist/server/web/spec-compliant/fetch-event'
 import { extractYoutubeId } from '../services/audio/youtube'
 import { PostMusicResponse } from './api/music/apimodels'
+import { AppAudioContext, AppAudioContextProps } from '../contexts/audioContext'
 
 const App = ({ Component, pageProps }: AppProps) => {
 
@@ -170,9 +171,35 @@ const App = ({ Component, pageProps }: AppProps) => {
     useEffect(() => {
         window.onclick = () => {
             setUserInterractedWithPage(true);
+            audioCtxRef.current = new AudioContext();
             window.onclick = undefined;
         }
     }, []);
+
+    
+    
+    // AppAudioContext
+    const audioCtxRef = useRef<AudioContext>();
+    
+    const appAudioContext: AppAudioContextProps = {
+        decodeAudioData: (data: ArrayBuffer, callback: (audioBuffer: AudioBuffer) => void) => {
+
+            const tryDecode = () => {
+
+                if (audioCtxRef.current) {
+                    audioCtxRef.current.decodeAudioData(data,
+                        result => callback(result),
+                        err => console.error(err)
+                    );
+                }
+                else {
+                    setTimeout(tryDecode, 100);
+                }
+            }
+
+            tryDecode();
+        }
+    }
 
     // AppContext
     const updateAudioElement = (index: number, data: Partial<AudioElementUpdateProps>) => {
@@ -289,6 +316,7 @@ const App = ({ Component, pageProps }: AppProps) => {
 
     return <ThemeProvider theme={muiTheme}>
         <AppContext.Provider value={appContext}>
+        <AppAudioContext.Provider value={appAudioContext}>
         <HotKeyContext.Provider value={hkContext}>
             <Head>
                 <title>Plml MusicPlayer</title>
@@ -300,6 +328,7 @@ const App = ({ Component, pageProps }: AppProps) => {
                 <Component {...pageProps} />
             </div>
         </HotKeyContext.Provider>
+        </AppAudioContext.Provider>
         </AppContext.Provider>
     </ThemeProvider>;
 }
