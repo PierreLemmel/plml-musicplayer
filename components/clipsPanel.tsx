@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
 import { AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
 import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
-import { ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps } from "./clipEdit";
+import { ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps, WaveformProps } from "./clipEdit";
 import { isValidYoutubeIdOrUrl } from "../services/audio/youtube";
 import { ifTrue } from "../services/core/utils";
 import { getMusicFile } from "../services/core/firebase";
@@ -79,14 +79,11 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         volume
     } = props;
 
-    const { updateAudioElement, loadClip, clearClip } = useAppContext();
-    const { decodeAudioData } = useAudioContext();
+    const { appReady, updateAudioElement, loadClip, clearClip } = useAppContext();
+    const audioCtx = useAudioContext();
 
     const audioRef = useRef<HTMLAudioElement>();
     const audio = audioRef.current;
-    
-    const [audioData, setAudioData] = useState<AudioBuffer|null>(null);
-
 
     const { startTime: startTimeProp, endTime: endTimeProp } = {
         ...defaultPlayProperties,
@@ -111,41 +108,38 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
     const [canPlay, setCanPlay] = useState<boolean>(true);
 
+    const [spectrum, setSpectrum] = useState<Float32Array|null>(null);
+
     useEffect(() => {
 
         const capturedId = clip?.id;
 
-        if (loaded || !capturedId) {
+        if (!appReady || loaded || !capturedId) {
             return;
         }
 
+        setLoaded(false);
         setLoading(true);
-        console.info(`Setting up clip '${capturedId}'`);
+        
+        const { getClipSrc, clearClip, getSpectrumData } = audioCtx;
 
-        let srcUrl: string|undefined;
-        getMusicFile(capturedId).then(rawData =>{
-            
-            const blob = new Blob([rawData], { type: "audio/mpeg3" });
-            srcUrl = window.URL.createObjectURL(blob);
-            audioRef.current.src = srcUrl;
-
-            decodeAudioData(rawData, audioData =>{
-                setAudioData(audioData);
+        getClipSrc(capturedId)
+            .then((src) => {
                 setLoaded(true);
                 setLoading(false);
+                audioRef.current.src = src;
 
-                console.info(`Setup done for clip '${capturedId}'`);
-            });
-        });
+                getSpectrumData(capturedId)
+                    .then(sd => {
+                        setSpectrum(sd);
+                    })
+            })
 
         return () => {
-            if (srcUrl) {
-                console.info(`Cleaning up resources for clip '${capturedId}'`);
-                window.URL.revokeObjectURL(srcUrl);
-            }
+            clearClip(capturedId);
         }
 
-    }, [clip?.id]);
+    }, [appReady, clip?.id]);
 
     let progressComponent = undefined;
 
@@ -160,6 +154,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
     let audioPlayProps: AudioPlayProgressProps = undefined;
     let editProgressProps: PlayProgressEditProps = undefined;
+    let waveformProps: WaveformProps = undefined;
 
     let resetClip: undefined|(() => void);
     let deleteClip: undefined|(() => void);
@@ -278,6 +273,10 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
             onCurrentTimeStartEditing, onCurrentTimeChanged, onCurrentTimeCommitted, setCurrentTime
         };
 
+        waveformProps = {
+            spectrumData: spectrum
+        }
+
         progressComponent = <AudioPlayProgress {...audioPlayProps} />
     }
 
@@ -304,7 +303,8 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
     const progressEdit = (editProgressProps && audioPlayProps) ? {
         ...editProgressProps,
-        ...audioPlayProps
+        ...audioPlayProps,
+        ...waveformProps
     } : undefined;
 
     return <>
@@ -361,6 +361,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         />}
     </>
 }
+
 
 interface AudioCellDisplayButtonProps {
     readonly children: JSX.Element;

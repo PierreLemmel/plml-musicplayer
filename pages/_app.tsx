@@ -14,11 +14,10 @@ import { onAuthChanged, updateUserData, useUserData } from '../services/core/fir
 import { User } from 'firebase/auth'
 import { AudioElementDataModel, AudioElementsMap, AudioElementsMap as AudioElementsMapDataModel, ShowDataModel } from '../services/datastore/shows'
 import { Timestamp } from 'firebase/firestore'
-import { delay, Mutable } from '../services/core/utils'
-import { FetchEvent } from 'next/dist/server/web/spec-compliant/fetch-event'
+import { Mutable } from '../services/core/utils'
 import { extractYoutubeId } from '../services/audio/youtube'
 import { PostMusicResponse } from './api/music/apimodels'
-import { AppAudioContext, AppAudioContextProps } from '../contexts/audioContext'
+import { AppAudioContext, AppAudioContextProps, AppAudioManager } from '../contexts/audioContext'
 
 const App = ({ Component, pageProps }: AppProps) => {
 
@@ -166,40 +165,21 @@ const App = ({ Component, pageProps }: AppProps) => {
         });
     }
 
-
     // Page ready
     useEffect(() => {
         window.onclick = () => {
+            
+            const audioMgr = new AppAudioManager(new AudioContext());
+            setAudioCtx(audioMgr);
+            
             setUserInterractedWithPage(true);
-            audioCtxRef.current = new AudioContext();
+
             window.onclick = undefined;
         }
     }, []);
-
-    
     
     // AppAudioContext
-    const audioCtxRef = useRef<AudioContext>();
-    
-    const appAudioContext: AppAudioContextProps = {
-        decodeAudioData: (data: ArrayBuffer, callback: (audioBuffer: AudioBuffer) => void) => {
-
-            const tryDecode = () => {
-
-                if (audioCtxRef.current) {
-                    audioCtxRef.current.decodeAudioData(data,
-                        result => callback(result),
-                        err => console.error(err)
-                    );
-                }
-                else {
-                    setTimeout(tryDecode, 100);
-                }
-            }
-
-            tryDecode();
-        }
-    }
+    const [audioCtx, setAudioCtx] = useState<AppAudioManager|null>(null);
 
     // AppContext
     const updateAudioElement = (index: number, data: Partial<AudioElementUpdateProps>) => {
@@ -316,7 +296,7 @@ const App = ({ Component, pageProps }: AppProps) => {
 
     return <ThemeProvider theme={muiTheme}>
         <AppContext.Provider value={appContext}>
-        <AppAudioContext.Provider value={appAudioContext}>
+        <AppAudioContext.Provider value={audioCtx}>
         <HotKeyContext.Provider value={hkContext}>
             <Head>
                 <title>Plml MusicPlayer</title>

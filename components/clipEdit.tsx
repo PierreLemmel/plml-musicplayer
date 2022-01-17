@@ -4,6 +4,7 @@ import { isValidYoutubeIdOrUrl } from "../services/audio/youtube";
 import { clamp, formatMinuteSeconds } from "../services/core/utils";
 import { AudioPlayProgressProps } from "./clipsPanel";
 import Overlay from "./overlay";
+import WaveformVisualizer from "./waveformVisualizer";
 
 export interface PlayProgressEditProps {
     readonly onStartTimeStartEditing: () => void;
@@ -20,7 +21,11 @@ export interface PlayProgressEditProps {
     readonly setCurrentTime: (currentTime: number) => void;
 }
 
-export type AudioPlayEditableProgressProps = AudioPlayProgressProps&PlayProgressEditProps;
+export interface WaveformProps {
+    readonly spectrumData: Float32Array|null;
+}
+
+export type AudioPlayEditableProgressProps = WaveformProps&AudioPlayProgressProps&PlayProgressEditProps;
 
 const AudioPlayEditableProgress = (props: AudioPlayEditableProgressProps) => {
 
@@ -238,6 +243,7 @@ const AudioPlayEditableProgress = (props: AudioPlayEditableProgressProps) => {
                 `}></div>
             </div>
         </div>
+        <WaveformVisualizer spectrumData={props.spectrumData} />
         <div className="mt-2">{formatMinuteSeconds(currentTime)} / {formatMinuteSeconds(duration)}</div>
     </div>
 }
