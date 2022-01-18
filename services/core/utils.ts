@@ -1,5 +1,24 @@
 export const delay = (ms: number): Promise<void> => new Promise(resolve => setTimeout(resolve, ms))
 
+
+export const waitWhile = async (predicate: () => boolean, maxTimeMs?: number, timeoutMsg?: string): Promise<void> => {
+
+    let time = 0;
+    const timeout = maxTimeMs ?? 10_000;
+
+    while (predicate()) {
+        await delay(100);
+
+        if (time > timeout) {
+            throw new Error(timeoutMsg ?? "Task timedout");
+        }
+    }
+}
+
+export const waitUntil = async (predicate: () => boolean, maxTimeMs?: number, timeoutMsg?: string): Promise<void> => {
+    await waitWhile(() => !predicate(), maxTimeMs, timeoutMsg);
+}
+
 export function randomInt(max: number) {
     return Math.floor(Math.random() * max);
 }

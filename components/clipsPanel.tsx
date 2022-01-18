@@ -7,7 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
 import { AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
 import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
-import { ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps, WaveformProps } from "./clipEdit";
+import { AudioPlayEditableProgressProps, ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps, WaveformProps } from "./clipEdit";
 import { isValidYoutubeIdOrUrl } from "../services/audio/youtube";
 import { ifTrue } from "../services/core/utils";
 import { getMusicFile } from "../services/core/firebase";
@@ -274,7 +274,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         };
 
         waveformProps = {
-            spectrumData: spectrum
+            spectrumData: spectrum,
         }
 
         progressComponent = <AudioPlayProgress {...audioPlayProps} />
@@ -301,10 +301,10 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     }
 
 
-    const progressEdit = (editProgressProps && audioPlayProps) ? {
-        ...editProgressProps,
-        ...audioPlayProps,
-        ...waveformProps
+    const progressEdit: AudioPlayEditableProgressProps|undefined = (editProgressProps && audioPlayProps) ? {
+        playProgressEdit: editProgressProps,
+        audioPlayProgress: audioPlayProps,
+        waveform: waveformProps
     } : undefined;
 
     return <>

@@ -25,7 +25,11 @@ export interface WaveformProps {
     readonly spectrumData: Float32Array|null;
 }
 
-export type AudioPlayEditableProgressProps = WaveformProps&AudioPlayProgressProps&PlayProgressEditProps;
+export interface AudioPlayEditableProgressProps {
+    readonly waveform: WaveformProps;
+    readonly audioPlayProgress: AudioPlayProgressProps;
+    readonly playProgressEdit: PlayProgressEditProps;
+}
 
 const AudioPlayEditableProgress = (props: AudioPlayEditableProgressProps) => {
 
@@ -39,13 +43,17 @@ const AudioPlayEditableProgress = (props: AudioPlayEditableProgressProps) => {
             playableTimeHandleColor: {
                 normal: playableTimeHandleColor,
                 hover:  playableTimeHandleHoverColor
-            }
+            },
+            waveformColorScheme
         },
         startTime, endTime, currentTime, duration,
+    } = props.audioPlayProgress;
+
+    const {
         onStartTimeStartEditing, onStartTimeChanged, onStartTimeCommitted,
         onEndTimeStartEditing, onEndTimeChanged, onEndTimeCommitted,
         onCurrentTimeStartEditing, onCurrentTimeChanged, onCurrentTimeCommitted, setCurrentTime
-    } = props;
+    } = props.playProgressEdit;
 
     const trackLeft = `${100.0 * startTime / duration}%`;
     const trackRight = `${100.0 * endTime / duration}%`;
@@ -243,7 +251,10 @@ const AudioPlayEditableProgress = (props: AudioPlayEditableProgressProps) => {
                 `}></div>
             </div>
         </div>
-        <WaveformVisualizer spectrumData={props.spectrumData} />
+
+        <WaveformVisualizer
+            {... {startTime, endTime, currentTime, duration}}
+            {...props.waveform} {...waveformColorScheme}/>
         <div className="mt-2">{formatMinuteSeconds(currentTime)} / {formatMinuteSeconds(duration)}</div>
     </div>
 }

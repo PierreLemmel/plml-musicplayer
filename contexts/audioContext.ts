@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import { getMusicFile } from "../services/core/firebase";
-import { delay } from "../services/core/utils";
+import { delay, waitWhile } from "../services/core/utils";
 
 export interface AppAudioContextProps {
     readonly getClipSrc: (id: string) => Promise<string>;
@@ -79,10 +79,8 @@ export class AppAudioManager implements AppAudioContextProps {
 
             const mapData = this.clipMap.get(id);
 
-            while (mapData.spectrumData === null) {
-                await delay(100);
-            }
-            
+            await waitWhile(() => mapData.spectrumData === null);
+
             return mapData.spectrumData;
         }
     }
