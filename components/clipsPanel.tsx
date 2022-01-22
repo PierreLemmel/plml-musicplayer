@@ -7,11 +7,12 @@ import { useEffect, useRef, useState } from "react";
 import { useAppContext } from "../contexts/appContext";
 import { AudioElementProps, defaultPlayProperties } from "../services/audio/audio";
 import { ComponentColorScheme, PlayProgressColorScheme } from "./themes/theme";
-import { AudioPlayEditableProgressProps, ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps, WaveformProps } from "./clipEdit";
+import { ClipEditData, ClipEditFormProps, ClipEditOverlay, PlayProgressEditProps } from "./clipEdit";
 import { isValidYoutubeIdOrUrl } from "../services/audio/youtube";
 import { ifTrue } from "../services/core/utils";
 import { getMusicFile } from "../services/core/firebase";
 import { useAudioContext } from "../contexts/audioContext";
+import { WaveformProgressProps, WaveformProps } from "./waveformProgress";
 
 interface ClipsPanelProps {
     readonly elements: AudioElementProps[];
@@ -108,7 +109,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
 
     const [canPlay, setCanPlay] = useState<boolean>(true);
 
-    const [spectrum, setSpectrum] = useState<Float32Array|null>(null);
+    const [spectrum, setSpectrum] = useState<number[]|null>(null);
 
     useEffect(() => {
 
@@ -232,6 +233,10 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         const onStartTimeChanged = (st: number) => setStartTimeDisplay(st);
         const onStartTimeCommitted = () => {
             editStartTimeRef.current = false;
+
+            if (startTimeProp === currentTimeDisplay) {
+                setCurrentTime(startTimeDisplay);
+            }
             updateAudioElement(index, {
                 playProperties: {
                     startTime: startTimeDisplay
@@ -301,7 +306,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
     }
 
 
-    const progressEdit: AudioPlayEditableProgressProps|undefined = (editProgressProps && audioPlayProps) ? {
+    const waveformProgressEdit: WaveformProgressProps|undefined = (editProgressProps && audioPlayProps) ? {
         playProgressEdit: editProgressProps,
         audioPlayProgress: audioPlayProps,
         waveform: waveformProps
@@ -357,7 +362,7 @@ const AudioCellDisplay = (props: AudioCellDisplayProps) => {
         {edit && <ClipEditOverlay
             visible={edit} onExit={() => setEdit(false)}
             clipEdit={clipEditFormProps}
-            progressEdit={progressEdit}
+            waveformProgressEdit={waveformProgressEdit}
         />}
     </>
 }

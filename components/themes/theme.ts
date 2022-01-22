@@ -39,8 +39,11 @@ export interface HandleColorScheme {
 }
 
 export interface WaveformColorScheme {
-    readonly trackColor: string;
-    readonly playableColor: string;
+    readonly borderColor: string;
+    readonly backgroundColor: string;
+
+    readonly inactiveColor: string;
+    readonly notPlayedColor: string;
     readonly playedColor: string;
 }
 
@@ -74,8 +77,12 @@ export const defaultPlayProgressColorScheme: PlayProgressColorScheme = {
     },
 
     waveformColorScheme: {
-        trackColor: "#401908",
-        playableColor: "#d6541c",
-        playedColor: "#d69e1c"
+        borderColor: "border-stone-500",
+
+        inactiveColor: "#57534e",
+        notPlayedColor: "#d6d3d1",
+        playedColor: "#f59e0b",
+
+        backgroundColor: ""
     }
 }

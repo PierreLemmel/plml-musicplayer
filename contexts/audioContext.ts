@@ -1,11 +1,12 @@
 import { createContext, useContext } from "react";
 import { getMusicFile } from "../services/core/firebase";
-import { delay, waitWhile } from "../services/core/utils";
+import { resample } from "../services/core/maths";
+import { waitWhile } from "../services/core/utils";
 
 export interface AppAudioContextProps {
     readonly getClipSrc: (id: string) => Promise<string>;
     readonly clearClip: (id: string) => Promise<void>;
-    readonly getSpectrumData: (id: string) => Promise<Float32Array>;
+    readonly getSpectrumData: (id: string) => Promise<number[]>;
 }
 
 export const AppAudioContext = createContext<AppAudioContextProps|null>(null);
@@ -14,10 +15,11 @@ export const useAudioContext = () => {
     return useContext(AppAudioContext);
 }
 
-
+const resampleSize = 2000;
 interface AppAudioMapData {
-    spectrumData: Float32Array|null;
+    spectrumData: number[]|null;
     src: string;
+    blob: Blob;
 }
 
 export class AppAudioManager implements AppAudioContextProps {
@@ -47,14 +49,17 @@ export class AppAudioManager implements AppAudioContextProps {
             const blob = new Blob([rawData], { type: "audio/mpeg3" });
             const src = window.URL.createObjectURL(blob);
 
-            const mapData = {
+            const mapData: AppAudioMapData = {
                 spectrumData: null,
-                src
+                src,
+                blob
             };
             this.clipMap.set(id, mapData);
 
             this.ctx.decodeAudioData(rawData, audioData => {
-                mapData.spectrumData = audioData.getChannelData(0);
+                const chanData = audioData.getChannelData(0);
+                const resampled = resample(chanData, resampleSize)
+                mapData.spectrumData = resampled;
                 console.info(`Setup done for clip '${id}'`);
             }, err => console.error(err));
         }
